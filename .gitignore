@@ -1,0 +1,11 @@
+/.env
+/logs/
+/config/
+/include/data/
+
+/*.lock.hcl
+/*.tfstate
+/*.backup
+/.terraform/
+
+/figures & images/

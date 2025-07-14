@@ -1,0 +1,9 @@
+beautifulsoup4==4.13.4
+boto3==1.38.9
+numpy==2.2.5
+pandas==2.2.3
+python-dateutil==2.9.0.post0
+python-dotenv==1.1.0
+requests==2.32.3
+selenium==4.32.0
+webdriver-manager==4.0.2
