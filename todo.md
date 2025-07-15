@@ -1,7 +1,8 @@
 * <s>setup airflow</s>
 * <s>setup azure account first</s>
-* setup first operator that will somehow download the files again locally first 
-* setup azure data lake storage first using terraform
+* <s>setup first operator that will somehow download the files again locally first</s>
+* <s>setup azure data lake storage first using terraform</s>
+* I will need a script that downloads the zip files containing the raw audio to the data lake I setup with terraform create an azure function, azure databricks, or azure batch to download 
 * modify first operator to download the files to the setup azure data lake storage
 
 # Setting up azure workspace
