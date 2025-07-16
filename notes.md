@@ -397,6 +397,12 @@ but once this has finished debugging it will show us http://localhost:7071/api/h
 
 * to stop azrure function from running locally go to task manager > details > find the func.exe running > end task
 
+* add this in order to solve `No job functions found.` error add `"AzureWebJobsFeatureFlags": "EnableWorkerIndexing"` in your local.settings.json file
+
+* another is Exception: SyntaxError: (unicode error) 'unicodeescape' azure funciton python which can be solved by using forward slashes in potential strings instead, using `\\` or `r"\"` 
+
+* once you deploy your function may raise an `Error: {"message":"Failed to fetch","stack":"TypeError: Failed to fetch\n    at https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:24220\n    at https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:24441\n    at nt (https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:7009)\n    at https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:10885\n    at Array.forEach (<anonymous>)\n    at https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:10873\n    at Object.nt (https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:7009)\n    at b (https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:60:2039)\n    at v (https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:60:1870)","isError":true}` which maybe due to `Cross Origin Resource Sharing` problems
+
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
 * end to end azure DE tutorial: https://www.youtube.com/watch?v=lyp8rlpJc3k&list=PLCBT00GZN_SAzwTS-SuLRM547_4MUHPuM&index=45&t=5222s
