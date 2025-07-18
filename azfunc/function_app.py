@@ -109,9 +109,9 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
             RANGE = req_body.get('range')
     RANGE = n_links if not RANGE else int(RANGE)
 
-    # print(os.getcwd())
-    # download the raw .tgz files to azure data lake storages
-    download_dataset(download_links[:RANGE], data_dir="C:/Users/LARRY/Documents/Scripts/data-engineering-path/signal-gender-predictor/include/data")
+    # # print(os.getcwd())
+    # # download the raw .tgz files to azure data lake storages
+    # download_dataset(download_links[:RANGE], data_dir="C:/Users/LARRY/Documents/Scripts/data-engineering-path/signal-gender-predictor/include/data")
 
     # Retrieve credentials from environment variables
     tenant_id = os.environ.get("AZURE_TENANT_ID")

@@ -3,6 +3,6 @@ variable "project_name" {
 }
 
 variable "containers" {
-  type = list(string)
+  type    = list(string)
   default = ["bronze", "silver", "gold"]
 }

@@ -403,6 +403,130 @@ but once this has finished debugging it will show us http://localhost:7071/api/h
 
 * once you deploy your function may raise an `Error: {"message":"Failed to fetch","stack":"TypeError: Failed to fetch\n    at https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:24220\n    at https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:24441\n    at nt (https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:7009)\n    at https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:10885\n    at Array.forEach (<anonymous>)\n    at https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:10873\n    at Object.nt (https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:177:7009)\n    at b (https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:60:2039)\n    at v (https://portal.azure.com/Content/Dynamic/EueNcQE5D-tA.js:60:1870)","isError":true}` which maybe due to `Cross Origin Resource Sharing` problems
 
+* in full detail the `azurerm_databricks_workspace` has the followign arguments that can be supplied
+```
+      ...
+      + customer_managed_key_enabled          = false
+      + id                                    = (known after apply)
+      + infrastructure_encryption_enabled     = false
+      + location                              = "eastus"
+      + managed_resource_group_id             = (known after apply)
+      + managed_resource_group_name           = (known after apply)
+      + name                                  = "sgppipelinedbws"
+      + network_security_group_rules_required = (known after apply)
+      + public_network_access_enabled         = true
+      + resource_group_name                   = "sgppipelinerg"
+      + sku                                   = "standard"
+      + storage_account_identity              = (known after apply)
+      + tags                                  = {
+          + "Environment" = "development"
+        }
+      + workspace_id                          = (known after apply)
+      + workspace_url                         = (known after apply)
+
+      + custom_parameters (known after apply)
+    }
+```
+
+* for `azurerm_data_factory` it has the following arguments
+```
+      + id                     = (known after apply)
+      + location               = "eastus"
+      + name                   = "sgppipelineadf"
+      + public_network_enabled = true
+      + resource_group_name    = "sgppipelinerg" 
+```
+
+* the most likely reason why you are still encoutnering a code 500 internal server error even when you've added `*`, `https://portal.azure.com`, `https://functions.azure.com`, `https://*.com`, and `http://*.com` is because you maybe using a relative module inside your `function_app.py` that has not been included in deployment. https://stackoverflow.com/questions/68009769/azure-function-500-internal-internal-server-error-in-run-test-mode
+
+
+Okay, an "Internal Server Error" (HTTP 500) in a deployed Azure Function, especially when it works fine locally, is a very common scenario. The fact that your function extract_signals depends on a relative import called download which targets the local machine is a huge red flag and almost certainly the cause of your problem.
+
+Let's break down why this is happening and how to fix it:
+
+Why It Works Locally but Fails on Azure
+Local Environment: When you run func host start locally, your Python code runs within your local machine's environment. The download module (which you described earlier as downloading files to your local machine, not ADLS) functions perfectly because it has access to your local filesystem.
+
+Azure Cloud Environment:
+
+Serverless Nature: When your Azure Function is deployed, it runs in a serverless environment in the cloud. It doesn't have "your local machine" to download to.
+
+Ephemeral Storage: While Azure Functions do have some temporary, ephemeral storage, it's not persistent, it's limited in size, and you cannot rely on it as a destination for downloaded files that need to be further processed or stored long-term.
+
+No Local File System Access (as you expect): Your function code tries to write to a path like C:\Users\LARRY\... or /tmp/... which doesn't exist or isn't accessible in the way your local machine's filesystem is.
+
+Permissions: Even if a temporary path existed, the function might not have the necessary permissions to write to arbitrary locations on the host's underlying infrastructure.
+
+The "Internal Server Error" (HTTP 500):
+When your download module tries to write to a non-existent or inaccessible local path in the Azure environment, it encounters an I/O error (e.g., "permission denied," "no such directory," "disk full"). This unhandled error then propagates up and manifests as a generic "Internal Server Error" to the caller of your HTTP trigger.
+
+CORS is Not the Issue Here
+You mentioned configuring CORS. CORS (Cross-Origin Resource Sharing) errors happen when a web browser tries to make a request to an API on a different domain than the one the web page originated from, and the API server doesn't explicitly allow it. An Internal Server Error (500) indicates a problem within your function's code execution on the server side, not a client-side access restriction due to CORS. So, while CORS is important for your Flask app later, it's not the cause of this 500 error.
+
+How to Fix It (The Solution You Already Identified!)
+This is precisely why we discussed downloading the files directly to Azure Data Lake Storage Gen2 (ADLS Gen2) instead of your local machine.
+
+Your download module (or whatever function is responsible for this) needs to be rewritten to:
+
+Accept the download URL.
+
+Use requests to get the file content.
+
+**Use azure-storage-blob (or azure.storage.filedatalake for ADLS Gen2-specific operations, though azure-storage-blob is generally sufficient and more common for basic file operations on ADLS Gen2) to upload that content directly to your specified ADLS Gen2 container (your "Bronze" layer).
+
+Key Changes Needed:
+
+Modify download.py (or the relevant module):
+
+Remove any code that writes to a local file path.
+
+Import BlobServiceClient from azure.storage.blob.
+
+Implement the logic to authenticate with ADLS Gen2 (preferably via Managed Identity when deployed).
+
+Implement the upload_blob method to stream the downloaded content directly to ADLS.
+
+Update requirements.txt: Make sure azure-storage-blob and azure-identity (if using Managed Identity) are listed.
+
+Ensure ADLS Gen2 Access:
+
+Deployed Function: If you're using Managed Identity, ensure your Azure Function App's Managed Identity has been granted the necessary RBAC roles on your ADLS Gen2 account (e.g., "Storage Blob Data Contributor" role on the target container).
+
+Local Development: Make sure your local.settings.json has the necessary environment variables for you
+
+* an error occured creating the secret <key> may occur when creating a key in azure key vault. It may have something to do with your permission policies. Tied to this is another error which is object_id is not a valid UUID https://stackoverflow.com/questions/75107879/error-key-vault-object-id-is-an-invalid-uuid-terraform-azure
+
+
+
+- if `operation not allowed by RBAC. If role assignments were recently changed pelase wait several minutes for role assignments to become effective` occurs you need to make sure that in the `access control tab` in the `resource groups > <resource group> > <your azure key vault resource>` click `view my access` and make sure key vualt administrator is a part of those role assignments, if not create one. by navigating again to main `<azure key vault resource> > access control tab` and then click add role assignment
+
+- if `operation "List" is not enabled in this key vault's access policy` occurs it is most likely because our principal is an application type because note that when key vault is created by terraform or by any azure service such as Azure ML workspace, it contains access policies assigned to only to said workspace or by the application terraform created which is why it is set to an (application type) and not a user type
+
+To resolve the error, you need to create another vault access policy by adding required permissions such as `create`, `set`, `delete` etc. and assign it to signed-in user account which is the azure account email you are using
+
+* we could actually setup as part of our infrastructure our databricks cluster that we will be using for our notebooks (we dont reate noteooks sa part of our infrastructure because we don't want it to be a part of the destruction process when we tear down the infrastructure when not in use). We just need to list databricks as part of our providers since it is not a part of the azure ecosystem per se. 
+```
+data "databricks_node_type" "smallest" {
+  local_disk = true
+}
+
+data "databricks_spark_version" "latest_lts" {
+  long_term_support = true
+}
+
+resource "databricks_cluster" "shared_autoscaling" {
+  cluster_name            = "Shared Autoscaling"
+  spark_version           = data.databricks_spark_version.latest_lts.id
+  node_type_id            = data.databricks_node_type.smallest.id
+  autotermination_minutes = 20
+  autoscale {
+    min_workers = 1
+    max_workers = 50
+  }
+}
+```
+
+
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
 * end to end azure DE tutorial: https://www.youtube.com/watch?v=lyp8rlpJc3k&list=PLCBT00GZN_SAzwTS-SuLRM547_4MUHPuM&index=45&t=5222s

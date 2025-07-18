@@ -3,10 +3,10 @@
 /config/
 /include/data/
 
-/*.lock.hcl
-/*.tfstate
-/*.backup
-/.terraform/
+infra/*.lock.hcl
+infra/*.tfstate
+infra/*.backup
+infra/.terraform/
 
 /figures & images/
 !/figures & images/initial architecture.jpg
