@@ -2,7 +2,12 @@ attrs==25.3.0
 azure-core==1.35.0
 azure-functions==1.23.0
 azure-identity==1.23.1
-azure-storage-blob==12.25.1
+azure-keyvault==4.2.0
+azure-keyvault-certificates==4.10.0
+azure-keyvault-keys==4.11.0
+azure-keyvault-secrets==4.10.0
+azure-storage-blob==12.26.0
+azure-storage-file-datalake==12.21.0
 beautifulsoup4==4.13.4
 certifi==2025.7.14
 cffi==1.17.1

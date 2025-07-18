@@ -14,8 +14,9 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.support import expected_conditions as EC
 
-from azure.identity import ClientSecretCredential
+from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
+from azure.storage.filedatalake import DataLakeServiceClient, DataLakeDirectoryClient
 
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
@@ -54,48 +55,40 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
     
 @app.route(route="extract_signals")
 def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
-    # # get year range and state from user input
-    # parser = ArgumentParser()
-    # parser.add_argument("--range", type=int, default=-1, help="represents the end range of what files to download")
-    # parser.add_argument("--data-dir", type=str, default="./include/data", help="represents the directory which to download the files")
-    # args = parser.parse_args()
+    # # define chrome options
+    # chrome_options = ChromeOptions()
+    # chrome_options.add_experimental_option('detach', True)
     
-    # RANGE = args.range
-    # DATA_DIR = args.data_dir
+    # # arguments
+    # chrome_options.add_argument("--no-sandbox")
+    # chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--disable-dev-shm-usage")
+    
+    # service = ChromeService(executable_path=ChromeDriverManager().install())
+    # driver = webdriver.Chrome(service=service, options=chrome_options)
+    # driver.get('http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/')
 
-    chrome_options = ChromeOptions()
-    chrome_options.add_experimental_option('detach', True)
-    
-    # arguments
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    
-    service = ChromeService(executable_path=ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.get('http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/')
-
-    # wait 5 seconds for page load
-    time.sleep(5)
+    # # wait 5 seconds for page load
+    # time.sleep(5)
 
     
-    driver.execute_script("window.scrollBy(0, document.body.scrollHeight)") 
+    # driver.execute_script("window.scrollBy(0, document.body.scrollHeight)") 
 
     
-    anchor_tags = driver.find_elements(By.TAG_NAME, "a")
+    # anchor_tags = driver.find_elements(By.TAG_NAME, "a")
 
-    def helper(a_tag):
-        # this will extract the href of all acnhor tags 
-        link = a_tag.get_attribute('href')
-        return link
+    # def helper(a_tag):
+    #     # this will extract the href of all acnhor tags 
+    #     link = a_tag.get_attribute('href')
+    #     return link
 
-    # concurrently read and load all .json files
-    with ThreadPoolExecutor() as exe:
-        links = list(exe.map(helper, anchor_tags))
+    # # concurrently read and load all .json files
+    # with ThreadPoolExecutor() as exe:
+    #     links = list(exe.map(helper, anchor_tags))
 
-    # exclude all hrefs without .tgz extension
-    download_links = list(filter(lambda link: link.endswith('.tgz'), links))
-    n_links = len(download_links)
+    # # exclude all hrefs without .tgz extension
+    # download_links = list(filter(lambda link: link.endswith('.tgz'), links))
+    # n_links = len(download_links)
 
 
     # check if a parameter has been entered in the URL
@@ -107,11 +100,12 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
             pass
         else:
             RANGE = req_body.get('range')
-    RANGE = n_links if not RANGE else int(RANGE)
+    # RANGE = n_links if not RANGE else int(RANGE)
 
     # # print(os.getcwd())
     # # download the raw .tgz files to azure data lake storages
-    # download_dataset(download_links[:RANGE], data_dir="C:/Users/LARRY/Documents/Scripts/data-engineering-path/signal-gender-predictor/include/data")
+    DATA_DIR = "C:/Users/LARRY/Documents/Scripts/data-engineering-path/signal-gender-predictor/include/data"
+    # download_dataset(download_links[:RANGE], data_dir=DATA_DIR)
 
     # Retrieve credentials from environment variables
     tenant_id = os.environ.get("AZURE_TENANT_ID")
@@ -119,21 +113,62 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     client_secret = os.environ.get("AZURE_CLIENT_SECRET")
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
 
-    # Create a credential object
-    credential = ClientSecretCredential(
-        tenant_id=tenant_id, 
-        client_id=client_id, 
-        client_secret=client_secret
-    )
+
+
+    # account_url = f"https://{storage_account_name}.dfs.core.windows.net"
+    token_credential = DefaultAzureCredential()
     
     # Create a BlobServiceClient object
     blob_service_client = BlobServiceClient(
         account_url=f"https://{storage_account_name}.blob.core.windows.net",
-        credential=credential,
+        credential=token_credential,
     )
 
+    # get container client
+    container_client = blob_service_client.get_container_client(container=f"{storage_account_name}-bronze")
+    print(f"azure container: {container_client}")
+
+    # Upload the file
+    # with open(os.path.join(DATA_DIR, "1028-20100710-hne.tgz"), "rb") as data:
+    #     container_client.upload_blob(name="test_signal.tgz", data=data, overwrite=True)
+
+    # view files
+    # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze
+    # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze?restype=REDACTED&comp=REDACTED
+    blob_list = container_client.list_blobs()
+
+    for blob in blob_list:
+        print(f"Name: {blob.name}")
+
+
+
+
+    # credential = DefaultAzureCredential()
+    # service_client = DataLakeServiceClient(
+    #     account_url="https://<your-datalake-name>.dfs.core.windows.net",
+    #     credential=credential
+    # )
+
+    # file_system_client = service_client.get_file_system_client(file_system="myfilesystem")
+    # directory_client = file_system_client.get_directory_client("mydirectory")
+    # file_client = directory_client.create_file("myfile.txt")
+
+    # file_contents = "Hello from Azure Function!"
+    # length = len(file_contents.encode())  # Ensure byte length
+    # file_client.append_data(data=file_contents, offset=0, length=length)
+    # file_client.flush_data(length)
+
+
+
+    # account_url = f"https://{storage_account_name}.dfs.core.windows.net"
+    # token_credential = DefaultAzureCredential()
+
+    # service_client = DataLakeServiceClient(account_url, credential=token_credential)
+    # file_system_client = service_client.get_file_system_client(file_system=f"{storage_account_name}-bronze")
+    # directory_client = file_system_client.get_directory_client("mydirectory")
+
     return func.HttpResponse(
-        f"This HTTP triggered function extracted {n_links} audio signals successfully: {download_links[:RANGE]}",
-        # f"This HTTP triggered function executed successfully: range is {req.params.get('range')}",
+        # f"This HTTP triggered function extracted {n_links} audio signals successfully: {download_links[:RANGE]}",
+        f"This HTTP triggered the uploading of the signals to azure data lake storage",
         status_code=200
     )

@@ -5,6 +5,9 @@
 * I will need a script that downloads the zip files containing the raw audio to the data lake I setup with terraform create an azure function, azure databricks, or azure batch to download 
 * modify first operator to download the files to the setup azure data lake storage
 
+* if I can upload a file to azure data lake storage via function locally I can upload the file to azure data lake storage container using secret keys in azure key vault
+* integrate azure key vault with azure function so that if the task of uploading a file to azure blob storage containers does need credentials then I don't need to access them locally.
+
 # Setting up azure workspace
 * create an azure account at 
 * setup azure databricks service (data transformation)

@@ -34,7 +34,7 @@
 
 * coy the `subscription id` we listed earlier via az account list or from the az login command and now run `az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/<SUBSCRIPTION_ID>"` which creates the equivalent of an IAM user in AWS which will output certain credentials we need to keep safe as this will be keys needed to access our azure services like azure data lake storage 
 
-save these credentials as the ff. in an `.env` file or if possible create an azure key vault service which stores these credentials in the azures cloud
+save these credentials as the ff. in an `.env` file or if possible create an azure key vault service which stores these credentials in the azure cloud
 
 ```
 ARM_CLIENT_ID="<APPID_VALUE>"
@@ -526,8 +526,133 @@ resource "databricks_cluster" "shared_autoscaling" {
 }
 ```
 
+* uploading a file via python to azure data lake storage container errors:
+- HttpResponseError: This request is not authorized to perform this operation using this permission. 
+- ErrorCode:AuthorizationPermissionMismatch
 
+could be caused:
+
+- by not being able to grant access control to the azure data lake storage account like we did when we were granting access to an S3 bucket 
+```
+I found it's not enough for the app and account to be added as owners. I would go into your storage account > IAM > Add role assignment, and add the special permissions for this type of request:
+
+- Storage Blob Data Contributor
+- Storage Queue Data Contributor
+```
+
+to add IAM policy
+to add principal owner
+to add access control 
+
+ok so can't do a get request and can't do a post request which is what I'm doiong reading from the azure data lake storage container, and
+
+- could be because of the fact that anonymous access level is set to private
+- access control list has security principals like superuser to have read, write, and execute
+- no access policy is set 
+
+remember we created a microsoft entra id which is what you can use to authorize a BlobServiceClient object. Ito yung service principal na sinasabi which is a type of security principal among others (e.g. service principal, user identity, managed identity) which is typically invoked using a local script that runs the statements that upload to azure data lake storage 
+
+we need to figure out a way how to authenticate using the service priincipal id we created when we tried to setup terraform with azure via the `az login`, `az account set --subscription "<your subscription id after logging qith your email via az login>"`, and `az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/<SUBSCRIPTION_ID>"` which finally creates our service principal
+
+[this](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/local-development-service-principal?tabs=azure-portal) essentially takes us right after we create our microsoft entra id (formeerly azure active directory) via `az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/<SUBSCRIPTION_ID>"` where az, ad, and sp here just mean azure, active directory, and service principal respectively and outlines that we have to assign roles/permissions to our application (the script or python script that will read, write, update, delete azure resources programmatically)
+
+- another cause could be because Gen2 lakes do not have containers, they have filesystems (which are a very similiar concept).
+
+On your storage account have you enabled the "Hierarchical namespace" feature? You can see this in the Configuration blade of the Storage account. If you have then the storage account is a Lake Gen2 - if not it is simply a blob storage account and you need to follow the instructions for using blob storage.
+
+Assuming you have set that feature then you can see the FileSystems blade - in there you create file systems, in a very similar way to blob containers. This is the name you need at the start of your abfss URL.
+
+However, the error message you have indicates to me that your service principal does not have permission on the data lake. You should either grant permission using a RBAC role on the storage account resource (add to storage account contributors or readers). Or use Storage Explorer to grant permission at a more granular level.
+
+Remember that data lake requires execute permissions on every folder from root to the folder you are trying to read/write from. As a test try reading a file from root first.
+
+solution is maybe to make an azure data lake storage account with heirarchical namespace argument set to false
+
+- another could be because the storage account container itself indicates `Authentication method: Access key(Switch to Microsoft Entra user account)` and if we click this switch it shows an error that we `do not have permissions to list the data using your user account with Microsoft Entra ID`. This is because we have not assigned the resource or resource group an IAM role with the service principal as the role so it is imperative that we add it in order to get rid of this error
+
+we can actually set this manually during the creation of our storage acccount so we don't have to always swith between using 
+
+```
+Environment is configured for ClientSecretCredential
+
+[2025-07-18T14:25:01.126Z] ManagedIdentityCredential will use IMDS with client_id: <some code>
+
+[2025-07-18T14:25:01.143Z] Request URL: 'https://login.microsoftonline.com/<some code>/v2.0/.well-known/openid-configuration'
+Request method: 'GET'
+Request headers:
+    'User-Agent': 'azsdk-python-identity/1.23.1 Python/3.11.5 (Windows-10-10.0.26100-SP0)'
+No body was attached to the request
+[2025-07-18T14:25:01.439Z] Response status: 200
+
+Response headers:
+    'Cache-Control': 'max-age=86400, private'
+    'Content-Type': 'application/json; charset=utf-8'
+    'Strict-Transport-Security': 'REDACTED'
+    'X-Content-Type-Options': 'REDACTED'
+    'Access-Control-Allow-Origin': 'REDACTED'
+    'Access-Control-Allow-Methods': 'REDACTED'
+    'P3P': 'REDACTED'
+    'x-ms-request-id': '<some code>'
+    'x-ms-ests-server': 'REDACTED'
+    'x-ms-srs': 'REDACTED'
+    'Content-Security-Policy-Report-Only': 'REDACTED'
+    'X-XSS-Protection': 'REDACTED'
+    'Set-Cookie': 'REDACTED'
+    'Date': 'Fri, 18 Jul 2025 14:24:59 GMT'
+    'Content-Length': '1753'
+
+[2025-07-18T14:25:01.483Z] Request URL: 'https://login.microsoftonline.com/<some code>/oauth2/v2.0/token'
+Request method: 'POST'
+Request headers:
+    'Accept': 'application/json'
+    'x-client-sku': 'REDACTED'
+    'x-client-ver': 'REDACTED'
+    'x-client-os': 'REDACTED'
+    'x-ms-lib-capability': 'REDACTED'
+    'client-request-id': 'REDACTED'
+    'x-client-current-telemetry': 'REDACTED'
+    'x-client-last-telemetry': 'REDACTED'
+    'User-Agent': 'azsdk-python-identity/1.23.1 Python/3.11.5 (Windows-10-10.0.26100-SP0)'
+A body is sent with the request
+[2025-07-18T14:25:01.614Z] Response status: 200
+
+Response headers:
+    'Cache-Control': 'no-store, no-cache'
+    'Pragma': 'no-cache'
+    'Content-Type': 'application/json; charset=utf-8'
+    'Expires': '-1'
+    'Strict-Transport-Security': 'REDACTED'
+    'X-Content-Type-Options': 'REDACTED'
+    'P3P': 'REDACTED'
+    'client-request-id': 'REDACTED'
+    'x-ms-request-id': '<some code>'
+    'x-ms-ests-server': 'REDACTED'
+    'x-ms-clitelem': 'REDACTED'
+    'x-ms-srs': 'REDACTED'
+    'Content-Security-Policy-Report-Only': 'REDACTED'
+    'X-XSS-Protection': 'REDACTED'
+    'Set-Cookie': 'REDACTED'
+    'Date': 'Fri, 18 Jul 2025 14:24:59 GMT'
+    'Content-Length': '1628'
+
+[2025-07-18T14:25:01.629Z] DefaultAzureCredential acquired a token from EnvironmentCredential
+
+[2025-07-18T14:25:01.636Z] Request URL: 'https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze?restype=REDACTED&comp=REDACTED'
+Request method: 'GET'
+Request headers:
+    'x-ms-version': 'REDACTED'
+    'Accept': 'application/xml'
+    'User-Agent': 'azsdk-python-storage-blob/12.26.0 Python/3.11.5 (Windows-10-10.0.26100-SP0)'
+    'x-ms-date': 'REDACTED'
+    'x-ms-client-request-id': '<some code>'
+    'Authorization': 'REDACTED'
+No body was attached to the request
+[2025-07-18T14:25:02.725Z] Response status: 403
+```
+
+* the reason why the unit access catalog connector does not show in the resource group where the azure databricks you crreated belongs to is because when terraform created it the sku or stock keeping units was set to standard, but if we created this in azure portal and selected the pricing tier which is the sku in terraform to be in premium. We only set our sku to be standard and as a result we don't see the unit access catalog connector
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
 * end to end azure DE tutorial: https://www.youtube.com/watch?v=lyp8rlpJc3k&list=PLCBT00GZN_SAzwTS-SuLRM547_4MUHPuM&index=45&t=5222s
 * after watching tutorial this is for magnifying your understanding to a typical DE project: https://www.youtube.com/watch?v=T8ahyYdSCGg
+* integrating azure key vault with azure functions so that we can write to and from the azure data lake with our azure credentials: https://medium.com/@dssc2022yt/accessing-azure-key-vault-secrets-with-azure-functions-2e651980f292
