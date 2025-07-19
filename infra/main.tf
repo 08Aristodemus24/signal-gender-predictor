@@ -31,16 +31,14 @@ data "azurerm_client_config" "current" {
 }
 
 resource "azurerm_key_vault" "kv" {
-  name                = "${var.project_name}kv"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  tenant_id           = data.azurerm_client_config.current.tenant_id
-
+  name                        = "${var.project_name}kv"
+  location                    = azurerm_resource_group.rg.location
+  resource_group_name         = azurerm_resource_group.rg.name
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
   enabled_for_disk_encryption = true
   soft_delete_retention_days  = 7
   purge_protection_enabled    = false
-
-  sku_name = "standard"
+  sku_name                    = "standard"
 
   # this is imperative to add as we need to be able to
   # get, create, and delete keys and secret keys
@@ -82,8 +80,12 @@ resource "azurerm_storage_account" "adls" {
   account_tier             = "Standard"
   account_replication_type = "GRS"
   account_kind             = "StorageV2"
-  is_hns_enabled           = "true"
-  access_tier              = "Cool"
+
+  # so we can work other services like azure ML because
+  # the latter does not use a storage account with heirarchical
+  # namespace enableds
+  is_hns_enabled = "false"
+  access_tier    = "Cool"
 }
 
 # azure containers for data lake storage 
@@ -93,8 +95,9 @@ resource "azurerm_storage_container" "containers" {
   for_each             = toset(var.containers)
   name                 = "${var.project_name}sa-${each.value}"
   storage_account_name = "${var.project_name}sa"
+  depends_on           = [azurerm_storage_account.adls]
   # storage_account_id = azurerm_storage_account.adls.id
-  depends_on = [azurerm_storage_account.adls]
+
 }
 
 # azure databricks workspace for transforming data at each staging layer
@@ -102,7 +105,9 @@ resource "azurerm_databricks_workspace" "dbw" {
   name                = "${var.project_name}dbws"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  sku                 = "standard"
+
+  # not standard because we need the unity catalog access connector
+  sku = "premium"
 
   tags = {
     Environment = "development"

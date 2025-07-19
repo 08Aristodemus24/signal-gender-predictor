@@ -24,3 +24,6 @@ sh:
 	docker exec -it signal-gender-predictor-pipeline-airflow-apiserver-1 bash
 
 restart: down up
+
+init-az-env:
+	azfunc\.venv\Scripts\activate.bat

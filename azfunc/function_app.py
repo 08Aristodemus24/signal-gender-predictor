@@ -14,7 +14,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.support import expected_conditions as EC
 
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, ClientSecretCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient, DataLakeDirectoryClient
 
@@ -112,21 +112,27 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     client_id = os.environ.get("AZURE_CLIENT_ID")
     client_secret = os.environ.get("AZURE_CLIENT_SECRET")
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+    # print(f"tenant_id: {tenant_id}")
+    # print(f"client_id: {client_id}")
+    # print(f"client_secret: {client_secret}")
 
 
+    credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
+    # credential = DefaultAzureCredential()
 
-    # account_url = f"https://{storage_account_name}.dfs.core.windows.net"
-    token_credential = DefaultAzureCredential()
-    
     # Create a BlobServiceClient object
     blob_service_client = BlobServiceClient(
         account_url=f"https://{storage_account_name}.blob.core.windows.net",
-        credential=token_credential,
+        credential=credential,
     )
 
-    # get container client
-    container_client = blob_service_client.get_container_client(container=f"{storage_account_name}-bronze")
+    # get blob client
+    containers = blob_service_client.list_containers()
+    for container in containers:
+        print(f"container: {container}")
+        
     print(f"azure container: {container_client}")
+    
 
     # Upload the file
     # with open(os.path.join(DATA_DIR, "1028-20100710-hne.tgz"), "rb") as data:
@@ -135,37 +141,18 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     # view files
     # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze
     # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze?restype=REDACTED&comp=REDACTED
-    blob_list = container_client.list_blobs()
+    try:
+        # get container client
+        container_client = blob_service_client.get_container_client(container=f"{storage_account_name}-bronze") 
+        blobs = container_client.get_container_access_policy()
+        for blob in blobs:
+            print(blob.name)
+    except Exception as e:
+        print(f"Error operating on blobs: {e}")
 
-    for blob in blob_list:
-        print(f"Name: {blob.name}")
-
-
-
-
-    # credential = DefaultAzureCredential()
-    # service_client = DataLakeServiceClient(
-    #     account_url="https://<your-datalake-name>.dfs.core.windows.net",
-    #     credential=credential
-    # )
-
-    # file_system_client = service_client.get_file_system_client(file_system="myfilesystem")
-    # directory_client = file_system_client.get_directory_client("mydirectory")
-    # file_client = directory_client.create_file("myfile.txt")
-
-    # file_contents = "Hello from Azure Function!"
-    # length = len(file_contents.encode())  # Ensure byte length
-    # file_client.append_data(data=file_contents, offset=0, length=length)
-    # file_client.flush_data(length)
-
-
-
-    # account_url = f"https://{storage_account_name}.dfs.core.windows.net"
-    # token_credential = DefaultAzureCredential()
-
-    # service_client = DataLakeServiceClient(account_url, credential=token_credential)
-    # file_system_client = service_client.get_file_system_client(file_system=f"{storage_account_name}-bronze")
-    # directory_client = file_system_client.get_directory_client("mydirectory")
+    # containers = blob_service_client.list_containers()
+    # for container in containers:
+    #     print(container)
 
     return func.HttpResponse(
         # f"This HTTP triggered function extracted {n_links} audio signals successfully: {download_links[:RANGE]}",
