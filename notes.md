@@ -1330,6 +1330,15 @@ Time:2025-07-19T08:58:32.6891244Z</Message></Error>
 
 this `{'public_access': None, 'signed_identifiers': []}` maybe a sign that we do not have access to writing stuff inside the container
 
+the idea is this, users, groups, and service principals that use client id, tenant id, client secret keys are under the microsoft entra id a cloud based identity and access management services formerly azure active directory
+
+we can also use shared access keys/storage account access keys in a storage account which we can retrieve if we did enable storage account access keys, which are actually less secure and azure actually advises that we don't use these keys
+
+another is shared access keys which is a fine grained version of storage account access keys which have more specific permissions/roles that we can assign to whoever has this key e.g. a shared access key that can read write update a storage blob container
+
+these are just ways to authenticate to a storage account or any kind of service/resource that uses authentication, and overall these are 
+
+
 * the reason why the unit access catalog connector does not show in the resource group where the azure databricks you crreated belongs to is because when terraform created it the sku or stock keeping units was set to standard, but if we created this in azure portal and selected the pricing tier which is the sku in terraform to be in premium. We only set our sku to be standard and as a result we don't see the unit access catalog connector
 
 # Articles, Videos, Papers: 
