@@ -1336,8 +1336,11 @@ we can also use shared access keys/storage account access keys in a storage acco
 
 another is shared access keys which is a fine grained version of storage account access keys which have more specific permissions/roles that we can assign to whoever has this key e.g. a shared access key that can read write update a storage blob container
 
-these are just ways to authenticate to a storage account or any kind of service/resource that uses authentication, and overall these are 
+these are just ways to authenticate to a storage account or any kind of service/resource that uses authentication, and overall these are under the service, user, and groups category of kinds of identities under the user type which is different from managed identities which are akin to AWS IAM users which are assigned keys and where these users
 
+Managed identities for Azure resources are service principals that create a Microsoft Entra identity and specific permissions for Azure managed resources. **Managed identities are a safer way to grant access to storage data and replace the requirement for you to include shared access signature tokens (SAS)** with your source and target container URLs.
+
+creating managed identities with azure functions to integrate with azure blob storage or azure data lake storage2 
 
 * the reason why the unit access catalog connector does not show in the resource group where the azure databricks you crreated belongs to is because when terraform created it the sku or stock keeping units was set to standard, but if we created this in azure portal and selected the pricing tier which is the sku in terraform to be in premium. We only set our sku to be standard and as a result we don't see the unit access catalog connector
 
@@ -1356,3 +1359,6 @@ https://stackoverflow.com/questions/78351027/getting-errorcodeauthorizationpermi
 https://stackoverflow.com/questions/78529445/azure-container-access-via-python-sdk-fails-with-authorizationpermissionmismatch
 
 * setting azure data lake storage CORS programmatically: https://stackoverflow.com/questions/28894466/how-can-i-set-cors-in-azure-blob-storage-in-portal
+
+* azure managed identities: https://learn.microsoft.com/en-us/azure/ai-services/language-service/native-document-support/managed-identities
+
