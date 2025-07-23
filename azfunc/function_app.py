@@ -1,27 +1,41 @@
-import time
-import os
-import azure.functions as func
-import logging
-
 from selenium import webdriver
-
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from webdriver_manager.chrome import ChromeDriverManager
-
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.support import expected_conditions as EC
 
 from azure.identity import DefaultAzureCredential, ClientSecretCredential
-from azure.storage.blob import BlobServiceClient
-from azure.storage.filedatalake import DataLakeServiceClient, DataLakeDirectoryClient
+from azure.storage.blob import (
+    BlobServiceClient,
+    ContainerClient,
+    BlobClient,
 
+    BlobSasPermissions,
+    ContainerSasPermissions,
+    AccountSasPermissions,
+    Services,
+    ResourceTypes,
+    UserDelegationKey,
+    generate_account_sas,
+    generate_container_sas,
+    generate_blob_sas,
+)
+
+from datetime import datetime, timedelta
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from pathlib import Path
+from urllib.parse import urlencode
+
+import time
+import requests
+import os
+import azure.functions as func
+import logging
 
 from utilities.loaders import download_dataset
 
@@ -111,26 +125,45 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     tenant_id = os.environ.get("AZURE_TENANT_ID")
     client_id = os.environ.get("AZURE_CLIENT_ID")
     client_secret = os.environ.get("AZURE_CLIENT_SECRET")
+    subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+    storage_account_key = os.environ.get("STORAGE_ACCOUNT_KEY")
+    resource_group_name = os.environ.get("RESOURCE_GROUP_NAME")
     # print(f"tenant_id: {tenant_id}")
     # print(f"client_id: {client_id}")
     # print(f"client_secret: {client_secret}")
 
 
     credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
-    # credential = DefaultAzureCredential()
 
-    # Create a BlobServiceClient object
-    blob_service_client = BlobServiceClient(
-        account_url=f"https://{storage_account_name}.blob.core.windows.net",
-        credential=credential,
-    )
-
-    # get blob client
-    containers = blob_service_client.list_containers()
-    for container in containers:
-        print(f"container: {container}")
-    print(f"azure container: {container_client}")
+    account_sas_kwargs = {
+        "account_name": storage_account_name,
+        "account_key": storage_account_key,
+        "resource_types": ResourceTypes(
+            service=True, 
+            container=True, 
+            object=True
+        ), 
+        "permission": AccountSasPermissions(
+            read=True, 
+            write=True,
+            delete=True,
+            list=True,
+            add=True,
+            create=True,
+            update=True,
+            process=True
+        ), 
+        "start": datetime.utcnow(),  
+        "services": Services(blob=True, queue=True, fileshare=True),
+        "expiry": datetime.utcnow() + timedelta(days=1) 
+    } 
+    
+    # generated sas token is at the level of the storage account, 
+    # permitting services like blobs, files, queues, and tables 
+    # to be read, listed, retrieved, updated, deleted etc. 
+    # where allowed resource types are service, container 
+    sas_token = generate_account_sas(**account_sas_kwargs)
     
 
     # Upload the file
@@ -141,11 +174,18 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze
     # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze?restype=REDACTED&comp=REDACTED
     try:
-        # get container client
-        container_client = blob_service_client.get_container_client(container=f"{storage_account_name}-bronze") 
-        blobs = container_client.get_container_access_policy()
-        for blob in blobs:
-            print(blob.name)
+        # create client with generated sas token
+        blob_service_client = BlobServiceClient(
+            account_url=f"https://{storage_account_name}.blob.core.windows.net", 
+            credential=sas_token
+        )
+
+        # list ocntainers and blobs
+        for container in blob_service_client.list_containers():
+            print(container.name)
+            curr = blob_service_client.get_container_client(container.get("name"))
+            for file in curr.list_blobs():
+                print(file.name)
     except Exception as e:
         print(f"Error operating on blobs: {e}")
 
