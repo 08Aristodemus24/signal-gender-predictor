@@ -130,7 +130,6 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     containers = blob_service_client.list_containers()
     for container in containers:
         print(f"container: {container}")
-        
     print(f"azure container: {container_client}")
     
 

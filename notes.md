@@ -1124,26 +1124,26 @@ Response headers:
 
 that is when I tested the storage access key itself which microsoft says is one of the authenticationmethods you can use when dealing with storage accounts apart from microsoft entra id, shared access signatures, 
 ```
-* >>>
->>> from azure.storage.blob import BlobServiceClient
->>>
->>>
->>> conn_str = "DefaultEndpointsProtocol=https;AccountName=sgppipelinesa;AccountKey=<acc key>;EndpointSuffix=core.windows.net"
->>> conn_key = "<acc key>"
->>>
->>> blob_service_client = BlobServiceClient.from_connection_string(connection_string)
->>> blob_service_client = BlobServiceClient.from_connection_string(conn_str)
->>> containers = blob_service_client.list_containers()
->>>
->>> for container in containers:
-...     print(container.name)
-...
+* 
+from azure.storage.blob import BlobServiceClient
+
+
+conn_str = "DefaultEndpointsProtocol=https;AccountName=sgppipelinesa;AccountKey=<acc key>;EndpointSuffix=core.windows.net"
+conn_key = "<acc key>"
+
+blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+blob_service_client = BlobServiceClient.from_connection_string(conn_str)
+containers = blob_service_client.list_containers()
+
+for container in containers:
+    print(container.name)
+
 sgppipelinesa-bronze
 sgppipelinesa-gold
 sgppipelinesa-silver
->>> bronze_container = blob_service_client.get_container_client(container=f"sgppipelinesa-bronze")
->>> files = bronze_container.list_blobs()
->>> [file for file in files]
+bronze_container = blob_service_client.get_container_client(container=f"sgppipelinesa-bronze")
+files = bronze_container.list_blobs()
+[file for file in files]
 [{'name': '1028-20100710-hne/LICENSE', 'container': 'sgppipelinesa-bronze', ..., 'has_versions_only': None}]
 ```
 
@@ -1342,6 +1342,307 @@ Managed identities for Azure resources are service principals that create a Micr
 
 creating managed identities with azure functions to integrate with azure blob storage or azure data lake storage2 
 
+* using shared access keys can be an alternatvie because how it works is we basically use a url instead to read and write to a azure blob container which we actually cna create if we go to our container > shared access keys > specify permissions (read, write, list, update, delete, add, create)
+```
+from azure.identity import DefaultAzureCredential, ClientSecretCredential
+from azure.storage.blob import BlobServiceClient
+import requests
+from datetime import datetime, timedelta
+from argparse import ArgumentParser
+from concurrent.futures import ThreadPoolExecutor
+from dotenv import load_dotenv
+from pathlib import Path
+
+import os
+
+env_dir = Path('./').resolve()
+load_dotenv(os.path.join(env_dir, '.env'))
+
+# Retrieve credentials from environment variables
+tenant_id = os.environ.get("AZURE_TENANT_ID")
+client_id = os.environ.get("AZURE_CLIENT_ID")
+client_secret = os.environ.get("AZURE_CLIENT_SECRET")
+subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+resource_group_name = os.environ.get("RESOURCE_GROUP_NAME")
+
+credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
+
+# Create a BlobServiceClient object
+blob_service_client = BlobServiceClient(account_url=f"https://{storage_account_name}.blob.core.windows.net", credential=credential,)
+token = credential.get_token("https://management.azure.com/.default").token
+
+
+# url + token: https://<storage account name>.blob.core.windows.net/<storage account container>?sp=racwdl&st=2025-07-22T09:15:41Z&se=2025-07-22T17:30:41Z&skoid=<signed object id that's created>&sktid=2e048c9e-b551-4c29-9888-80fb187ca009&skt=2025-07-22T09:15:41Z&ske=2025-07-22T17:30:41Z&sks=b&skv=2024-11-04&spr=https&sv=2024-11-04&sr=c&sig=HjHl7b8%2F%2FPeB%2F7URHBwTemxIqVoU4Od%2FiWf4uCge0zU%3D
+# sp=racwdl&st=2025-07-22T09:15:41Z&se=2025-07-22T17:30:41Z&skoid=d092f89d-60e5-43d7-8a6e-d353f83f69d5&sktid=2e048c9e-b551-4c29-9888-80fb187ca009&skt=2025-07-22T09:15:41Z&ske=2025-07-22T17:30:41Z&sks=b&skv=2024-11-04&spr=https&sv=2024-11-04&sr=c&sig=HjHl7b8%2F%2FPeB%2F7URHBwTemxIqVoU4Od%2FiWf4uCge0zU%3D
+url = "https://<storage account name>.blob.core.windows.net/<storage account container>"
+body = {
+    # signed permissions (required)
+    "sp": "racwdl",
+
+    # signed start indicate the start and expiration times for 
+    # shared access key
+    "st": "2025-07-22T09:15:41Z",
+    "se": "2025-07-22T17:30:41Z",
+
+    # object id (required) The Get User Delegation Key 
+    # operation returns this value as part of the response
+    # which is another rqeuest in of itself
+    "skoid": "d092f89d-60e5-43d7-8a6e-d353f83f69d5",
+
+    # tenant id (required) The Get User Delegation Key 
+    # operation returns this value as part of the response
+    # which is another rqeuest in of itself
+    "sktid": "2e048c9e-b551-4c29-9888-80fb187ca009",
+
+    # signed key start time (required) start of the lifetime 
+    # of the user delegation key in ISO Date format. The Get 
+    # User Delegation Key operation returns this value as 
+    # part of the response.
+    "skt": "2025-07-22T09:15:41Z",
+
+    # signed key expiry time (required) end of the lifetime 
+    # of the user delegation key in ISO Date format. The Get 
+    # User Delegation Key operation returns this value as 
+    # part of the response.
+    "ske": "2025-07-22T17:30:41Z",
+
+    # signed authorized object id (optional)
+    "sks": "b",
+
+    # signed key version (required) The value is returned 
+    # by the Get User Delegation Key operation. Specifies
+    # the storage service version that was used to get 
+    # the user delegation key
+    "skv": "2024-11-04",
+
+    # signed protocol (optional) can be values like "https" or
+    # ("https", "http")
+    "spr": "https",
+
+    # signed version,
+    "sv": "2024-11-04", 
+
+    # signed resource (required) b and c mean we want 
+    # access to blobs (files) and containers as well 
+    # as the blobs within the containers 
+    "sr": "c",
+
+    # signature (required)
+    "sig": "HjHl7b8%2F%2FPeB%2F7URHBwTemxIqVoU4Od%2FiWf4uCge0zU%3D"
+}
+response = requests.post(url, headers=f"Authorization: Bearer {token}", json=body)
+response.json()["serviceSasToken"]
+```
+
+this is for a user delegated shared access signature. Motherfucker was simpole enough until another 403 error
+
+but ff. is for account shared access signature
+```
+from azure.identity import DefaultAzureCredential, ClientSecretCredential
+from azure.storage.blob import BlobServiceClient
+import requests
+from datetime import datetime, timedelta
+from argparse import ArgumentParser
+from concurrent.futures import ThreadPoolExecutor
+from dotenv import load_dotenv
+from pathlib import Path
+import os
+
+env_dir = Path('./').resolve()
+load_dotenv(os.path.join(env_dir, '.env'))
+ 
+# Retrieve credentials from environment variables
+tenant_id = os.environ.get("AZURE_TENANT_ID")
+client_id = os.environ.get("AZURE_CLIENT_ID")
+client_secret = os.environ.get("AZURE_CLIENT_SECRET")
+subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+resource_group_name = os.environ.get("RESOURCE_GROUP_NAME")
+
+credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
+
+# Create a BlobServiceClient object
+blob_service_client = BlobServiceClient(account_url=f"https://{storage_account_name}.blob.core.windows.net", credential=credential,)
+token = credential.get_token("https://management.azure.com/.default").token
+
+sas_url = (
+    f"https://management.azure.com/subscriptions/{subscription_id}/"
+    f"resourceGroups/{resource_group_name}/providers/Microsoft.Storage/"
+    f"storageAccounts/{storage_account_name}/listServiceSas/?api-version=2021-09-01"
+)
+
+signed_exp = (datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+body = {"signedVersion": "2025-01-01", "canonicalizedResource": f"/blob/{storage_account_name}/{storage_account_name}-bronze", "signedResourceTypes": "c", "signedPermissions": "l", "signedProtocol": "https", "signedExpiry": signed_exp}
+
+response = requests.post(sas_url, headers={"Authorization": f"Bearer {token}"}, json=body)
+
+sas_token = response.json()['serviceSasToken']
+blob_service_client = BlobServiceClient(account_url=f"https://{storage_account_name}.blob.core.windows.net", credential=sas_token)
+container_client = blob_service_client.get_container_client("{storage_account_name}-bronze")
+
+for file in container_client.list_blobs():
+...     print(file.name)
+```
+
+SignedServices (ss)	Required. Specifies the signed services that are accessible with the account SAS. Possible values include:
+
+- Blob (b)
+- Queue (q)
+- Table (t)
+- File (f)
+
+You can combine values to provide access to more than one service. For example, ss=bf specifies access to the Blob Storage and Azure Files endpoints. E.g. `{"signedServices": "bfqt", ...}` where `b` is for blob, `f` is for file, `q` is for queue, and `t` is for table
+
+gets ko na
+if you want to list containers you would generate shared access signature at the level of the storage account, specify `s` as the `signedResourceTypes` e.g. `{"signedResourceTypes": "s", ...}`, and then specify `l` as the `signedPermissions`
+
+note you can combine values to provide access to more than one resource type. For example, `{"signedResourceTypes": "sco", ...}` which accesses service itself, containers, and objects
+
+if you want to list blobs and files inside the container you would generate shared access signature at the level of the storage account, and then specify `c`, and `o` as the `signedResourceTypes` which gets container properties, metadata, sets container metadata, deletes containers, gets, sets, creates, adds, lists, updates, deletes, processes, immutable storage, perm delete objects in the container
+
+full list:
+```
+Operation	Signed service | Signed resource type | Signed permission
+List Containers | Blob (b) | Service (s) | List (l)
+Get Blob Service Properties | Blob (b) | Service (s) | Read (r)
+Set Blob Service Properties | Blob (b) | Service (s) | Write (w)
+Get Blob Service Stats | Blob (b) | Service (s) | Read (r)
+Create Container | Blob (b) | Container (c) | Create(c) or Write (w)
+Get Container Properties | Blob (b) | Container (c) | Read (r)
+Get Container Metadata | Blob (b) | Container (c) | Read (r)
+Set Container Metadata | Blob (b) | Container (c) | Write (w)
+Lease Container | Blob (b) | Container (c) | Write (w) or Delete (d)1
+Delete Container | Blob (b) | Container (c) | Delete (d)1
+Find Blobs by Tags in Container | Blob (b) | Container (c) | Filter (f)
+List Blobs | Blob (b) | Container (c) | List (l)
+Put Blob (create new block blob) | Blob (b) | Object (o) | Create (c) or Write (w)
+Put Blob (overwrite existing block blob) | Blob (b) | Object (o) | Write (w)
+Put Blob (create new page blob) | Blob (b) | Object (o) | Create (c) or Write (w)
+Put Blob (overwrite existing page blob) | Blob (b) | Object (o) | Write (w)
+Get Blob | Blob (b) | Object (o) | Read (r)
+Get Blob Properties | Blob (b) | Object (o) | Read (r)
+Set Blob Properties | Blob (b) | Object (o) | Write (w)
+Get Blob Metadata | Blob (b) | Object (o) | Read (r)
+Set Blob Metadata | Blob (b) | Object (o) | Write (w)
+Get Blob Tags | Blob (b) | Object (o) | Tags (t)
+Set Blob Tags | Blob (b) | Object (o) | Tags (t)
+Find Blobs by Tags | Blob (b) | Object (o) | Filter (f)
+Delete Blob | Blob (b) | Object (o) | Delete (d)1
+Delete Blob Version | Blob (b) | Object (o) | Delete Version (x)2
+Permanently Delete Snapshot / Version | Blob (b) | Object (o) | Permanent Delete (y)3
+Lease Blob | Blob (b) | Object (o) | Write (w) or Delete (d)1
+Snapshot Blob | Blob (b) | Object (o) | Create (c) or Write (w)
+Copy Blob (destination is new blob) | Blob (b) | Object (o) | Create (c) or Write (w)
+Copy Blob (destination is an existing blob) | Blob (b) | Object (o) | Write (w)
+Incremental Copy | Blob (b) | Object (o) | Create (c) or Write (w)
+Abort Copy Blob | Blob (b) | Object (o) | Write (w)
+Put Block | Blob (b) | Object (o) | Write (w)
+Put Block List (create new blob) | Blob (b) | Object (o) | Write (w)
+Put Block List (update existing blob) | Blob (b) | Object (o) | Write (w)
+Get Block List | Blob (b) | Object (o) | Read (r)
+Put Page | Blob (b) | Object (o) | Write (w)
+Get Page Ranges | Blob (b) | Object (o) | Read (r)
+Append Block | Blob (b) | Object (o) | Add (a) or Write (w)
+Clear Page | Blob (b) | Object (o) | Write (w)
+```
+
+
+```
+from azure.identity import DefaultAzureCredential, ClientSecretCredential
+from azure.storage.blob import BlobServiceClient
+import requests
+from datetime import datetime, timedelta
+from argparse import ArgumentParser
+from concurrent.futures import ThreadPoolExecutor
+from dotenv import load_dotenv
+from pathlib import Path
+import os
+
+env_dir = Path('./').resolve()
+load_dotenv(os.path.join(env_dir, '.env'))
+True
+
+# Retrieve credentials from environment variables
+tenant_id = os.environ.get("AZURE_TENANT_ID")
+client_id = os.environ.get("AZURE_CLIENT_ID")
+client_secret = os.environ.get("AZURE_CLIENT_SECRET")
+subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+resource_group_name = os.environ.get("RESOURCE_GROUP_NAME")
+
+credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
+
+# Create a BlobServiceClient object
+blob_service_client = BlobServiceClient(account_url=f"https://{storage_account_name}.blob.core.windows.net", credential=credential,)
+token = credential.get_token("https://management.azure.com/.default").token
+
+sas_url = (
+...     f"https://management.azure.com/subscriptions/{subscription_id}/"
+...     f"resourceGroups/{resource_group_name}/providers/Microsoft.Storage/"
+...     f"storageAccounts/{storage_account_name}/listServiceSas/?api-version=2021-09-01"
+... )
+
+signed_exp = (datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+body = {"signedVersion": "2025-01-01", "signedServices": "bfqt", "signedResourceTypes": "sco", "signedPermissions": "rwdlacu", "signedProtocol": "https", "signedExpiry": signed_exp}
+
+response = requests.post(sas_url, headers={"Authorization": f"Bearer {token}"}, json=body)
+
+# generated sas token is at the level of the storage account, permitting services like blobs, files, queues, and tables to be read, listed, retrieved, updated, deleted etc. where allowed resource types are service, container 
+sas_token = response.json()['serviceSasToken']
+blob_service_client = BlobServiceClient(account_url=f"https://{storage_account_name}.blob.core.windows.net", credential=sas_token)
+blob_service_client.list_containers()(
+<iterator object azure.core.paging.ItemPaged at 0x215f7ab5190>
+for cont in blob_service_client.list_containers)
+  File "<stdin>", line 1
+    for cont in blob_service_client.list_containers()
+                                                     ^
+SyntaxError: expected ':'
+for cont in blob_service_client.list_containers():
+...     print(cont)
+...
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "c:\Users\LARRY\Documents\Scripts\data-engineering-path\signal-gender-predictor\azfunc\.venv\Lib\site-packages\azure\core\paging.py", line 136, in __next__
+    return next(self._page_iterator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\LARRY\Documents\Scripts\data-engineering-path\signal-gender-predictor\azfunc\.venv\Lib\site-packages\azure\core\paging.py", line 82, in __next__
+    self._response = self._get_next(self.continuation_token)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\LARRY\Documents\Scripts\data-engineering-path\signal-gender-predictor\azfunc\.venv\Lib\site-packages\azure\storage\blob\_models.py", line 544, in _get_next_cb
+    process_storage_error(error)
+  File "c:\Users\LARRY\Documents\Scripts\data-engineering-path\signal-gender-predictor\azfunc\.venv\Lib\site-packages\azure\storage\blob\_shared\response_handlers.py", line 190, in process_storage_error
+    exec("raise error from None")  # pylint: disable=exec-used # nosec
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 1, in <module>
+azure.core.exceptions.HttpResponseError: This request is not authorized to perform this operation using this resource type.
+RequestId:1b57d78a-101e-0044-60ff-fa03a3000000
+Time:2025-07-22T11:54:00.2105291Z
+ErrorCode:AuthorizationResourceTypeMismatch
+extendederrordetail:SignedResourceTypes 's' is required to perform this operation.
+Content: <?xml version="1.0" encoding="utf-8"?><Error><Code>AuthorizationResourceTypeMismatch</Code><Message>This request is not authorized to perform this operation using this resource type.
+RequestId:1b57d78a-101e-0044-60ff-fa03a3000000
+Time:2025-07-22T11:54:00.2105291Z</Message><ExtendedErrorDetail>SignedResourceTypes 's' is required to perform this operation.</ExtendedErrorDetail></Error>
+container_client = blob_service_client.get_container_client("sgppipelinesa-bronze")
+container_client
+<azure.storage.blob._container_client.ContainerClient object at 0x00000215F8B19890>
+for blob in container_client.list_blobs():
+...     print(blob)
+```
+
+useful resources: 
+- https://learn.microsoft.com/en-us/azure/ai-services/translator/document-translation/how-to-guides/create-sas-tokens?tabs=Containers
+account delegated shared access signature token: 
+- https://learn.microsoft.com/en-us/rest/api/storageservices/create-account-sas#specify-an-ip-address-or-ip-range
+user delegated shared access signature token: 
+- https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegation-sas#construct-a-user-delegation-sas
+- https://prashanth-kumar-ms.medium.com/azure-managed-identity-integration-with-storage-account-5bea9261a4d1
+getting user delegation key:  
+- https://learn.microsoft.com/en-us/rest/api/storageservices/get-user-delegation-key
+shared access signature did not match: 
+- https://stackoverflow.com/questions/25038429/azure-shared-access-signature-signature-did-not-match
+
+
 * the reason why the unit access catalog connector does not show in the resource group where the azure databricks you crreated belongs to is because when terraform created it the sku or stock keeping units was set to standard, but if we created this in azure portal and selected the pricing tier which is the sku in terraform to be in premium. We only set our sku to be standard and as a result we don't see the unit access catalog connector
 
 # Articles, Videos, Papers: 
@@ -1361,4 +1662,6 @@ https://stackoverflow.com/questions/78529445/azure-container-access-via-python-s
 * setting azure data lake storage CORS programmatically: https://stackoverflow.com/questions/28894466/how-can-i-set-cors-in-azure-blob-storage-in-portal
 
 * azure managed identities: https://learn.microsoft.com/en-us/azure/ai-services/language-service/native-document-support/managed-identities
-
+https://prashanth-kumar-ms.medium.com/azure-managed-identity-integration-with-storage-account-5bea9261a4d1
+* generating shared access token to access the azure blob storage: https://learn.microsoft.com/en-us/azure/ai-services/translator/document-translation/how-to-guides/create-sas-tokens?tabs=Containers (this can be basically be generated using a post request using your microsoft entra id service principal)
+https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegation-sas#user-delegation-sas-support-for-directory-scoped-access 
