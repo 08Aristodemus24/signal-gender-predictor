@@ -1641,7 +1641,8 @@ getting user delegation key:
 - https://learn.microsoft.com/en-us/rest/api/storageservices/get-user-delegation-key
 shared access signature did not match: 
 - https://stackoverflow.com/questions/25038429/azure-shared-access-signature-signature-did-not-match
-
+examples of creating account delegated shared access signature toeksn and using for blob storage operations:
+- https://github.com/Azure-Samples/AzureStorageSnippets/blob/master/blobs/howto/python/blob-devguide-py/blob_devguide_create_sas.py
 
 * the reason why the unit access catalog connector does not show in the resource group where the azure databricks you crreated belongs to is because when terraform created it the sku or stock keeping units was set to standard, but if we created this in azure portal and selected the pricing tier which is the sku in terraform to be in premium. We only set our sku to be standard and as a result we don't see the unit access catalog connector
 

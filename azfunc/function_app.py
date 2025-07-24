@@ -36,8 +36,8 @@ import requests
 import os
 import azure.functions as func
 import logging
+import json
 
-from utilities.loaders import download_dataset
 
 # load env variables
 env_dir = Path('../').resolve()
@@ -102,9 +102,20 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     # exclude all hrefs without .tgz extension
     # http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1028-20100710-hne.tgz
     download_links = list(filter(lambda link: link.endswith('.tgz'), links))
+
+    # construct the lookup dictionary that will be uploaded as json to adl2
+    signal_files_lookup = [
+        {
+            "BaseURL": download_link,
+            "RelativeURL": download_link.split("/")[-1],
+            "FileName": download_link.split("/")[-1],
+        } for download_link in download_links
+    ]
+    signal_files_lookup_json = json.dumps(signal_files_lookup, indent=4).encode("utf-8")
+
+    # get number of downloads
     n_links = len(download_links)
-
-
+    
     # check if a parameter has been entered in the URL
     RANGE = req.params.get('range')
     if not RANGE:
@@ -139,6 +150,7 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     account_sas_kwargs = {
         "account_name": storage_account_name,
         "account_key": storage_account_key,
+        "services": Services(blob=True, queue=True, fileshare=True),
         "resource_types": ResourceTypes(
             service=True, 
             container=True, 
@@ -155,7 +167,6 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
             process=True
         ), 
         "start": datetime.utcnow(),  
-        "services": Services(blob=True, queue=True, fileshare=True),
         "expiry": datetime.utcnow() + timedelta(days=1) 
     } 
     
@@ -180,12 +191,17 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
             credential=sas_token
         )
 
+        # retrieves container client to retrieve blob client
+        misc_container_client = blob_service_client.get_container_client(f"{storage_account_name}-miscellaneous")
+        signal_files_lookup_client = misc_container_client.get_blob_client("signal_files_lookup.json")
+
+        # using newly created blob client we upload the json 
+        # object as a file
+        signal_files_lookup_client.upload_blob(signal_files_lookup_json, overwrite=True)
+
     except Exception as e:
         print(f"Error operating on blobs: {e}")
 
-    # containers = blob_service_client.list_containers()
-    # for container in containers:
-    #     print(container)
 
     return func.HttpResponse(
         # f"This HTTP triggered function extracted {n_links} audio signals successfully: {download_links[:RANGE]}",
