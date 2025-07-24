@@ -4,5 +4,5 @@ variable "project_name" {
 
 variable "containers" {
   type    = list(string)
-  default = ["bronze", "silver", "gold"]
+  default = ["bronze", "silver", "gold", "miscellaneous"]
 }

@@ -69,40 +69,40 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
     
 @app.route(route="extract_signals")
 def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
-    # # define chrome options
-    # chrome_options = ChromeOptions()
-    # chrome_options.add_experimental_option('detach', True)
+    # define chrome options
+    chrome_options = ChromeOptions()
+    chrome_options.add_experimental_option('detach', True)
     
-    # # arguments
-    # chrome_options.add_argument("--no-sandbox")
-    # chrome_options.add_argument("--headless")
-    # chrome_options.add_argument("--disable-dev-shm-usage")
+    # arguments
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-dev-shm-usage")
     
-    # service = ChromeService(executable_path=ChromeDriverManager().install())
-    # driver = webdriver.Chrome(service=service, options=chrome_options)
-    # driver.get('http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/')
+    service = ChromeService(executable_path=ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.get('http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/')
 
-    # # wait 5 seconds for page load
-    # time.sleep(5)
+    # wait 5 seconds for page load
+    time.sleep(5)
 
-    
-    # driver.execute_script("window.scrollBy(0, document.body.scrollHeight)") 
+    # scrolls down to very bottom
+    driver.execute_script("window.scrollBy(0, document.body.scrollHeight)") 
 
-    
-    # anchor_tags = driver.find_elements(By.TAG_NAME, "a")
+    # extracts all anchor tags in page
+    anchor_tags = driver.find_elements(By.TAG_NAME, "a")
+    def helper(a_tag):
+        # this will extract the href of all acnhor tags 
+        link = a_tag.get_attribute('href')
+        return link
 
-    # def helper(a_tag):
-    #     # this will extract the href of all acnhor tags 
-    #     link = a_tag.get_attribute('href')
-    #     return link
+    # concurrently read and load all .tgz files
+    with ThreadPoolExecutor() as exe:
+        links = list(exe.map(helper, anchor_tags))
 
-    # # concurrently read and load all .json files
-    # with ThreadPoolExecutor() as exe:
-    #     links = list(exe.map(helper, anchor_tags))
-
-    # # exclude all hrefs without .tgz extension
-    # download_links = list(filter(lambda link: link.endswith('.tgz'), links))
-    # n_links = len(download_links)
+    # exclude all hrefs without .tgz extension
+    # http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1028-20100710-hne.tgz
+    download_links = list(filter(lambda link: link.endswith('.tgz'), links))
+    n_links = len(download_links)
 
 
     # check if a parameter has been entered in the URL
@@ -114,7 +114,7 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
             pass
         else:
             RANGE = req_body.get('range')
-    # RANGE = n_links if not RANGE else int(RANGE)
+    RANGE = n_links if not RANGE else int(RANGE)
 
     # # print(os.getcwd())
     # # download the raw .tgz files to azure data lake storages
@@ -170,9 +170,9 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     # with open(os.path.join(DATA_DIR, "1028-20100710-hne.tgz"), "rb") as data:
     #     container_client.upload_blob(name="test_signal.tgz", data=data, overwrite=True)
 
-    # view files
+    # view filesr
     # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze
-    # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze?restype=REDACTED&comp=REDACTED
+    # https://sgppipelinesa.blob.coe.windows.net/sgppipelinesa-bronze?restype=REDACTED&comp=REDACTED
     try:
         # create client with generated sas token
         blob_service_client = BlobServiceClient(
@@ -180,12 +180,6 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
             credential=sas_token
         )
 
-        # list ocntainers and blobs
-        for container in blob_service_client.list_containers():
-            print(container.name)
-            curr = blob_service_client.get_container_client(container.get("name"))
-            for file in curr.list_blobs():
-                print(file.name)
     except Exception as e:
         print(f"Error operating on blobs: {e}")
 
