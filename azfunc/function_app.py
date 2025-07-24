@@ -24,6 +24,12 @@ from azure.storage.blob import (
     generate_blob_sas,
 )
 
+from azure.mgmt.datafactory.models import (
+    LookupActivity, 
+    LinkedService,
+    CopyActivity
+)
+
 from datetime import datetime, timedelta
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
@@ -45,6 +51,36 @@ load_dotenv(os.path.join(env_dir, '.env'))
 
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+
+def batch_signal_files_lookup(data: list, batch_size: int):
+    """
+    returns an iterator with a json object representing the
+    all the base url and the relative url of the compressed
+    audio recording/signal of a subject in an http resource
+    """
+
+    for i in range(0, len(data), batch_size):
+        # get current batch of data
+        curr_batch = data[i:i + batch_size]
+
+        # construct the lookup dictionary that will be 
+        # uploaded as json to adls2
+        curr_batch_signal_files_lookup = [
+            {
+                "BaseURL": download_link,
+                "RelativeURL": download_link.split("/")[-1],
+                "FileName": download_link.split("/")[-1],
+            } for download_link in curr_batch
+        ]
+
+        # convert dicitonary to json
+        curr_batch_signal_files_lookup_json = json.dumps(
+            curr_batch_signal_files_lookup, 
+            indent=4
+        ).encode("utf-8")
+
+        # yield the json object
+        yield curr_batch_signal_files_lookup_json
 
 @app.route(route="http_trigger")
 def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
@@ -102,16 +138,7 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     # exclude all hrefs without .tgz extension
     # http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1028-20100710-hne.tgz
     download_links = list(filter(lambda link: link.endswith('.tgz'), links))
-
-    # construct the lookup dictionary that will be uploaded as json to adl2
-    signal_files_lookup = [
-        {
-            "BaseURL": download_link,
-            "RelativeURL": download_link.split("/")[-1],
-            "FileName": download_link.split("/")[-1],
-        } for download_link in download_links
-    ]
-    signal_files_lookup_json = json.dumps(signal_files_lookup, indent=4).encode("utf-8")
+    batched_signal_files_lookup_jsons = batch_signal_files_lookup(download_links, batch_size=5000)
 
     # get number of downloads
     n_links = len(download_links)
@@ -193,11 +220,14 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
 
         # retrieves container client to retrieve blob client
         misc_container_client = blob_service_client.get_container_client(f"{storage_account_name}-miscellaneous")
-        signal_files_lookup_client = misc_container_client.get_blob_client("signal_files_lookup.json")
-
+        
         # using newly created blob client we upload the json 
         # object as a file
-        signal_files_lookup_client.upload_blob(signal_files_lookup_json, overwrite=True)
+        for i, batch in enumerate(batched_signal_files_lookup_jsons):
+            signal_files_lookup_client = misc_container_client.get_blob_client(f"signal_files_lookup_{i + 1}.json")
+            signal_files_lookup_client.upload_blob(batch, overwrite=True)
+
+
 
     except Exception as e:
         print(f"Error operating on blobs: {e}")
