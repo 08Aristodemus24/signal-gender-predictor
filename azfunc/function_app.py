@@ -24,12 +24,6 @@ from azure.storage.blob import (
     generate_blob_sas,
 )
 
-from azure.mgmt.datafactory.models import (
-    LookupActivity, 
-    LinkedService,
-    CopyActivity
-)
-
 from datetime import datetime, timedelta
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
@@ -160,19 +154,8 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     # download_dataset(download_links[:RANGE], data_dir=DATA_DIR)
 
     # Retrieve credentials from environment variables
-    tenant_id = os.environ.get("AZURE_TENANT_ID")
-    client_id = os.environ.get("AZURE_CLIENT_ID")
-    client_secret = os.environ.get("AZURE_CLIENT_SECRET")
-    subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
     storage_account_key = os.environ.get("STORAGE_ACCOUNT_KEY")
-    resource_group_name = os.environ.get("RESOURCE_GROUP_NAME")
-    # print(f"tenant_id: {tenant_id}")
-    # print(f"client_id: {client_id}")
-    # print(f"client_secret: {client_secret}")
-
-
-    credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
 
     account_sas_kwargs = {
         "account_name": storage_account_name,
@@ -222,7 +205,8 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
         misc_container_client = blob_service_client.get_container_client(f"{storage_account_name}-miscellaneous")
         
         # using newly created blob client we upload the json 
-        # object as a file
+        # object as a file. There are 6321 items of these urls
+        # in total
         for i, batch in enumerate(batched_signal_files_lookup_jsons):
             signal_files_lookup_client = misc_container_client.get_blob_client(f"signal_files_lookup_{i + 1}.json")
             signal_files_lookup_client.upload_blob(batch, overwrite=True)

@@ -1646,6 +1646,23 @@ examples of creating account delegated shared access signature toeksn and using 
 
 * the reason why the unit access catalog connector does not show in the resource group where the azure databricks you crreated belongs to is because when terraform created it the sku or stock keeping units was set to standard, but if we created this in azure portal and selected the pricing tier which is the sku in terraform to be in premium. We only set our sku to be standard and as a result we don't see the unit access catalog connector
 
+* we when creating source/origin adn sink/datasets in azure data factory for copy activities the reason why we create parameters for these datasets is so that we can pass the items especially those used in a ForEach activity dynamically 
+
+kumbaga ganto 
+we define parameters `BaseURL` and `RelativeURL` at the level of our source/sink dataset
+in our source dataset we set the value to be dynamic e.g. `@dataset().<param we define e.g. BaseURL or RelativeURL>`
+
+going up once so that were now at the level of our, for example Copy activity which will be inside the ForEach activity we will see that the parameters we have defined will appear and we can then also set its value to be dynamic e.g. `item().<the key of the current item in the output of our Lookup activity which corresponds to a value e.g. BaseURL or RelativeURL>`
+
+ff. are keys to remember when creating a `Copy` activity in ADF
+- we need to define a source/origin dataset
+- we need to define a sink/destination dataset
+- we need to define a linked service that represents where the source/origin dataset will come from and what format it is
+- we need to define a linked service that represents where the sink/destination dataset is to be dumped and what format it will be 
+
+
+https://stackoverflow.com/questions/78080462/azure-data-factory-copy-data-http-source-zip-file-and-sink-as-azure-blob-storage
+
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
 * end to end azure DE tutorial: https://www.youtube.com/watch?v=lyp8rlpJc3k&list=PLCBT00GZN_SAzwTS-SuLRM547_4MUHPuM&index=45&t=5222s

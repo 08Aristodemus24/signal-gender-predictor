@@ -13,7 +13,8 @@
 - we need all relative urls and base urls of the http resources
 - we construct a dictionary containing these relative urls and base urls of the http resources and write it in a json file and upload it directly to a miscellaneous container in our azure data lake storage account. We can initially do this locally but we will have to at some point do this inside the azure function instead without having to rely on local environmetn secrets & variables. See this post here how to setup azure functions with azure key vault: https://medium.com/@dssc2022yt/accessing-azure-key-vault-secrets-with-azure-functions-2e651980f292
 - once the dictionary has been uploaded as a .json file we will define our lookup activity/task in azure data factory, and set its source dataset to be the json file we uploaded in our azure blob storage. But to do this we will have to create a linked service
-- now all this can be automated using azure-mgmt-datafactory python package which allows us to interact with the azure datafactory interface and service programmatically via the this sub azure-sdk, we can define the linked services we want so that we can specify our activities the source/origin of our dataset and what sink/destination. We can use LookupActivity(), LinkedService(), CopyActivity() to programmatically build our pipeline's tasks 
+- now all this can be automated using azure-mgmt-datafactory python package which allows us to interact with the azure datafactory interface and service programmatically via the this sub azure-sdk, we can define the linked services we want so that we can specify our activities the source/origin of our dataset and what sink/destination. We can use LookupActivity(), LinkedService(), CopyActivity() to programmatically build our pipeline's tasks
+- to automate this however we would need to 
 
 
 # Setting up azure workspace
