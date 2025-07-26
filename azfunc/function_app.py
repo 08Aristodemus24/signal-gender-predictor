@@ -23,6 +23,7 @@ from azure.storage.blob import (
     generate_container_sas,
     generate_blob_sas,
 )
+from azure.keyvault.secrets import SecretClient
 
 from datetime import datetime, timedelta
 from argparse import ArgumentParser
@@ -39,9 +40,10 @@ import logging
 import json
 
 
-# load env variables
-env_dir = Path('../').resolve()
-load_dotenv(os.path.join(env_dir, '.env'))
+# # this is strictly used only in development
+# # load env variables
+# env_dir = Path('../').resolve()
+# load_dotenv(os.path.join(env_dir, '.env'))
 
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
@@ -80,6 +82,26 @@ def batch_signal_files_lookup(data: list, batch_size: int):
 def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
+    # we need to set the environment variables in our function 
+    # app so that when DefaultAzureCredentials() runs it loads 
+    # the env variables in our azure function app service 
+    # as credentials. This must include the name of the secret
+    # we want to access set to a value @Microsoft.KeyVault(SecretUri=<copied-value>)
+    # where `<copied value>` here is actually the secred identifier we
+    # copied when we created our secret key and value pair azure key
+    # vault. If this is not set even if azure key vault hgas an access
+    # policy that grants the azure function to access it it will result
+    # in a internal server 500 error
+    credential = DefaultAzureCredential()
+
+    secret_client = SecretClient(
+        vault_url="https://sgppipelinekv.vault.azure.net",
+        credential=credential
+    )
+
+    test = secret_client.get_secret('test')
+    
+
     name = req.params.get('name')
     if not name:
         try:
@@ -90,10 +112,10 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
             name = req_body.get('name')
 
     if name:
-        return func.HttpResponse(f"Hello, {name}. This HTTP triggered function executed successfully.")
+        return func.HttpResponse(f"Hello, {name}. This HTTP triggered function executed successfully with test key {test.value}.")
     else:
         return func.HttpResponse(
-             "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response.",
+             f"This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response with test key {test.value}.",
              status_code=200
         )
     
@@ -148,10 +170,19 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
             RANGE = req_body.get('range')
     RANGE = n_links if not RANGE else int(RANGE)
 
-    # # print(os.getcwd())
-    # # download the raw .tgz files to azure data lake storages
-    DATA_DIR = "C:/Users/LARRY/Documents/Scripts/data-engineering-path/signal-gender-predictor/include/data"
-    # download_dataset(download_links[:RANGE], data_dir=DATA_DIR)
+    # once deployed to azure function app environment
+    # DefaultAzureCredential retrieves its client id
+    # and object id as important credentials to use for
+    # accessing the azure key vault
+    credential = DefaultAzureCredential()
+
+    secret_client = SecretClient(
+        vault_url="https://sgppipelinekv.vault.azure.net",
+        credential=credential
+    )
+
+    test = secret_client.get_secret('test')
+    
 
     # Retrieve credentials from environment variables
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
@@ -211,14 +242,12 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
             signal_files_lookup_client = misc_container_client.get_blob_client(f"signal_files_lookup_{i + 1}.json")
             signal_files_lookup_client.upload_blob(batch, overwrite=True)
 
-
-
     except Exception as e:
         print(f"Error operating on blobs: {e}")
 
 
     return func.HttpResponse(
         # f"This HTTP triggered function extracted {n_links} audio signals successfully: {download_links[:RANGE]}",
-        f"This HTTP triggered the uploading of the signals to azure data lake storage",
+        f"This HTTP triggered the uploading of the signals to azure data lake storage using key: {test}",
         status_code=200
     )

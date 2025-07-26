@@ -1663,6 +1663,551 @@ ff. are keys to remember when creating a `Copy` activity in ADF
 
 https://stackoverflow.com/questions/78080462/azure-data-factory-copy-data-http-source-zip-file-and-sink-as-azure-blob-storage
 
+
+* what I dont understand yet is if azure key vault stores these credentials, won't we need some sort of permission again or credential again to access these credentials? For example my client secret is stored in key vault and I need a azure function to use it to authenticate programmatically to azure blob storage or azure data facory. Won't this require a credential to access a credential? And assuming we aren't in local development won't this credential need to be exposed some way in our azure function? Because of this azure key vault secrets public access? I'm confused eh.
+
+
+
+You've hit upon a very important and common point of confusion when first learning about secure credential management in Azure! It seems like a chicken-and-egg problem: how do you get the first credential to get the other credentials?
+
+The answer lies in Managed Identities for Azure Resources. This is the key to solving the "credential to access a credential" problem without exposing secrets.
+
+Let's break it down:
+
+The Problem: You're right, if your Azure Function needs a client secret from Key Vault, and Key Vault itself requires authentication (which it does), then how does the Function get the credential to authenticate to Key Vault? If you hardcode a credential in the Function's configuration to access Key Vault, you're back to square one with exposed secrets.
+
+The Solution: Managed Identities
+
+What they are: Managed Identities are a feature of Microsoft Entra ID (formerly Azure Active Directory) that provides Azure services (like Azure Functions, Azure Web Apps, Azure VMs, Azure Databricks) with an automatically managed identity in Microsoft Entra ID.
+
+How they work:
+
+When you enable a Managed Identity for your Azure Function App, Azure automatically creates a Service Principal (an identity for an application) in your Microsoft Entra ID tenant.
+
+This Service Principal is automatically associated with your Azure Function App.
+
+Crucially, Azure internally manages the lifecycle and credentials for this Managed Identity. You, as the developer, never see or handle these credentials.
+
+You then grant this Managed Identity (your Function App's identity) permissions to access your Azure Key Vault. For example, you'd give it "Get" and "List" permissions on secrets in your Key Vault.
+
+When your Azure Function code needs to retrieve a secret from Key Vault, it makes a request to Key Vault. Azure's underlying infrastructure automatically authenticates the Function using its Managed Identity, without any explicit credentials being provided by your code.
+
+Once the Function has the client secret from Key Vault, it can then use that secret to authenticate to Azure Blob Storage, Azure Data Factory, or any other service that requires those credentials.
+
+No Public Access / No Exposure:
+
+You are correct that you don't want Key Vault secrets to have "public access." Key Vault secrets are private by default. Access is granted through Role-Based Access Control (RBAC) on the Key Vault itself.
+
+Managed Identities solve the exposure problem because the "credential" used to access Key Vault is handled entirely by Azure's platform. Your Function code doesn't store it, doesn't retrieve it, and you don't see it. The connection is secure and internal to Azure.
+
+In summary:
+
+You do need a form of credential/permission to access Key Vault.
+
+Managed Identities are that "credential."
+
+The beauty is that Azure handles the management and security of this first "credential" (the Managed Identity's token) for you. You just enable it on your service and grant it permissions.
+
+No exposure: Since you never see or manage the Managed Identity's underlying credential, there's no way for it to be accidentally exposed in your code, config files, or logs.
+
+This is the recommended, secure pattern for Azure services to access other Azure resources that store secrets.
+
+**medyo nagegets ko na how an azure function may indeed have access to a azure key vault secret key. It's because if we gave permission for this azure function or any kind of service like azure databricks for that matter using some kind of key, that these and only these apps can use this key to access the azure key vault credential**
+
+```
+what I dont understand yet is if azure key vault stores these credentials, won't we need some sort of permission again or credential again to access these credentials? For example my client secret is stored in key vault and I need a azure function to use it to authenticate programmatically to azure blob storage or azure data facory. Won't this require a credential to access a credential? And assuming we aren't in local development won't this credential need to be exposed some way in our azure function? Because of this azure key vault secrets public access? I'm confused eh.
+
+You've hit upon a very important and common point of confusion when first learning about secure credential management in Azure! It seems like a chicken-and-egg problem: how do you get the first credential to get the other credentials?
+
+The answer lies in Managed Identities for Azure Resources. This is the key to solving the "credential to access a credential" problem without exposing secrets.
+
+Let's break it down:
+
+The Problem: You're right, if your Azure Function needs a client secret from Key Vault, and Key Vault itself requires authentication (which it does), then how does the Function get the credential to authenticate to Key Vault? If you hardcode a credential in the Function's configuration to access Key Vault, you're back to square one with exposed secrets.
+
+The Solution: Managed Identities
+
+What they are: Managed Identities are a feature of Microsoft Entra ID (formerly Azure Active Directory) that provides Azure services (like Azure Functions, Azure Web Apps, Azure VMs, Azure Databricks) with an automatically managed identity in Microsoft Entra ID.
+
+How they work:
+
+When you enable a Managed Identity for your Azure Function App, Azure automatically creates a Service Principal (an identity for an application) in your Microsoft Entra ID tenant.
+
+This Service Principal is automatically associated with your Azure Function App.
+
+Crucially, Azure internally manages the lifecycle and credentials for this Managed Identity. You, as the developer, never see or handle these credentials.
+
+You then grant this Managed Identity (your Function App's identity) permissions to access your Azure Key Vault. For example, you'd give it "Get" and "List" permissions on secrets in your Key Vault.
+
+When your Azure Function code needs to retrieve a secret from Key Vault, it makes a request to Key Vault. Azure's underlying infrastructure automatically authenticates the Function using its Managed Identity, without any explicit credentials being provided by your code.
+
+Once the Function has the client secret from Key Vault, it can then use that secret to authenticate to Azure Blob Storage, Azure Data Factory, or any other service that requires those credentials.
+
+No Public Access / No Exposure:
+
+You are correct that you don't want Key Vault secrets to have "public access." Key Vault secrets are private by default. Access is granted through Role-Based Access Control (RBAC) on the Key Vault itself.
+
+Managed Identities solve the exposure problem because the "credential" used to access Key Vault is handled entirely by Azure's platform. Your Function code doesn't store it, doesn't retrieve it, and you don't see it. The connection is secure and internal to Azure.
+
+In summary:
+
+You do need a form of credential/permission to access Key Vault.
+
+Managed Identities are that "credential."
+
+The beauty is that Azure handles the management and security of this first "credential" (the Managed Identity's token) for you. You just enable it on your service and grant it permissions.
+
+No exposure: Since you never see or manage the Managed Identity's underlying credential, there's no way for it to be accidentally exposed in your code, config files, or logs.
+
+This is the recommended, secure pattern for Azure services to access other Azure resources that store secrets.
+
+OHHH ok. So parang ganto ba: parang sa vercel app ba na pag ka dineploy mo na yung application and the application uses os.environ.get("SECRET_KEY") that this key is not necessarily a public key that anyone can use but the app and for the app itself is the only entity that can use this key?
+
+
+
+
+
+Show thinking
+Yes, your analogy with a Vercel app using os.environ.get("SECRET_KEY") is a good way to understand part of the concept, but let's refine it to highlight the unique security advantage of Azure Key Vault with Managed Identities.
+
+Similarity to os.environ.get("SECRET_KEY") in a Vercel app:
+
+Secrets out of Code: In both scenarios, the actual sensitive value (like your client secret) is not hardcoded directly into your application's source code (e.g., app.py). This is a fundamental security best practice.
+
+Runtime Access: The application retrieves the secret at runtime. The environment variable, whether on Vercel or Azure, is securely injected into the application's runtime environment.
+
+App-Specific Access: You are correct that this key is not "public." Only the deployed application instance has access to its configured environment variables. An external entity cannot just query Vercel or Azure and get your secret key from environment variables.
+
+The Crucial Difference and Advantage of Azure Key Vault with Managed Identities:
+
+Your confusion ("Won't this require a credential to access a credential?") is exactly what Managed Identities solve.
+
+Think of it like this:
+
+Your Vercel App (or Azure App Service without Managed Identity): You, the developer, manually input the SECRET_KEY into Vercel's environment variable configuration (or Azure's Application Settings). So, you are still the one handling the sensitive secret at some point (even if it's via a secure UI). The app then uses that SECRET_KEY because it's configured for it.
+
+You provide the initial credential to the app's environment.
+
+Your Azure Function with Azure Key Vault and Managed Identity:
+
+You (the developer) store the sensitive client_secret directly into Azure Key Vault. This is the only place you put the raw secret.
+
+You enable a Managed Identity for your Azure Function App. When you do this, Azure automatically creates a special identity for your Function in Microsoft Entra ID. You never see or handle any credential for this Managed Identity. It's managed by Azure itself.
+
+You then grant Role-Based Access Control (RBAC) permissions on the Azure Key Vault. You explicitly tell Key Vault: "Allow this specific Managed Identity (your Function's identity) to Get secrets from me."
+
+When your Function code runs and tries to retrieve a secret from Key Vault, Azure's platform automatically authenticates the Function using its Managed Identity. Your code doesn't need to provide any client ID, client secret, or certificate to Key Vault. It's all handled transparently by Azure.
+
+Once the Function securely retrieves the client_secret from Key Vault (using its Managed Identity), it can then use that client_secret to authenticate to Azure Blob Storage, Azure Data Factory, or any other service.
+
+In essence:
+
+With Managed Identities, you eliminate the need to store or expose any secret to access your secrets. The "credential to access a credential" is handled by the underlying Azure platform, making the process much more secure.
+
+Key Vault secrets do not have "public access." Access is strictly controlled via RBAC, typically granted to Managed Identities of other Azure services or specific Microsoft Entra ID users/groups.
+
+so let's say na deploy na yung azure function ko and in this functions code I call on a class or another function from azure sdk that accesses the azure key vault secret e.g. client_secret = func_that_gets_azure_key_vault_client_secret(), can it be understood that if my azure function app has a manged identity for my function that this function once deployed can now and exclusively access this client secret from azure key vault?
+
+
+
+
+
+Show thinking
+Yes, you have understood it perfectly!
+
+If your Azure Function App has a Managed Identity enabled, and you have granted that specific Managed Identity the necessary permissions (e.g., "Get" and "List" secrets) on your Azure Key Vault, then:
+
+Once deployed, your Azure Function's code (e.g., client_secret = func_that_gets_azure_key_vault_client_secret()) will be able to programmatically and securely retrieve that client_secret from Key Vault.
+
+And yes, in a practical and secure sense, it can now and exclusively access this client secret from Azure Key Vault, among the entities that you have authorized.
+
+Let's break down the "exclusively" part:
+
+Exclusively means: Only the identities (Managed Identities, users, service principals) that you have explicitly granted permission to on that specific secret in Key Vault can retrieve it. It's not publicly accessible, and other Azure Functions, VMs, or users in your subscription that haven't been granted access will be denied.
+
+It does NOT mean: That you can't ever grant another entity access. If you later decide another Azure Function or a specific user also needs that secret, you would simply grant them permission in Key Vault as well.
+
+This is the power of Managed Identities: you manage access at the Key Vault level by granting permissions to specific Azure resources, without ever embedding credentials for Key Vault itself into your code or configuration. Azure handles the initial authentication handshake for the Managed Identity transparently and securely.
+
+
+Ok so in a tutorial it says that I should create an access policy in my azure key vault but I am unable to do so because it says access policies are not available. Some suggest its due to the permission model being set to "azure role-based access control" and not "vault access policy". My terraform infrastructure automatically set my azure key vault service to the following `resource "azurerm_key_vault" "kv" {
+
+  name                        = "${var.project_name}kv"
+
+  location                    = azurerm_resource_group.rg.location
+
+  resource_group_name         = azurerm_resource_group.rg.name
+
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
+
+  enabled_for_disk_encryption = true
+
+  soft_delete_retention_days  = 7
+
+  purge_protection_enabled    = false
+
+  sku_name                    = "standard"
+
+
+
+  # this is imperative to add as we need to be able to
+
+  # get, create, and delete keys and secret keys
+
+  access_policy {
+
+    tenant_id = data.azurerm_client_config.current.tenant_id
+
+
+
+    # this is just a workaround as principal id not object id from
+
+    # azure rm client config does works over the latter
+
+    object_id = module.test_module.principal_id
+
+
+
+    key_permissions = [
+
+      "Get",
+
+      "Create",
+
+      "Update",
+
+      "Import",
+
+      "Delete",
+
+    ]
+
+
+
+    secret_permissions = [
+
+      "Get",
+
+      "List",
+
+      "Set",
+
+      "Delete"
+
+    ]
+
+
+
+    storage_permissions = [
+
+      "Get",
+
+    ]
+
+  }
+
+
+
+  enable_rbac_authorization = true
+
+}` where enable_rbac_authorization was set to true. Could it be that why my azure key vault was created with permission model settings being set to "azure role based access control" is because of this configuration I didn't know my terraform infrastructure code had?
+
+
+
+Show thinking
+Yes, you are exactly right! Your diagnosis is spot on.
+
+Your Terraform infrastructure code enable_rbac_authorization = true is precisely why your Azure Key Vault was created with the permission model set to "Azure role-based access control" instead of the older "Vault access policy" model.
+
+Here's a breakdown:
+
+Two Permission Models for Azure Key Vault:
+
+Vault Access Policy (Legacy Model): This is the older, default model unless you specify otherwise. Permissions are managed directly within the Key Vault's "Access policies" blade in the Azure portal or via the access_policy block in Terraform. You assign granular permissions (Get, List, Set for secrets; Get, Sign for keys, etc.) to specific Microsoft Entra ID identities (users, groups, service principals, managed identities).
+
+Azure Role-Based Access Control (RBAC) (Recommended Model): This is the newer, more granular, and recommended model. When this is enabled, Key Vault permissions are managed entirely through Azure's global RBAC system. Instead of creating "Access Policies" within the Key Vault resource itself, you assign built-in Azure roles (or custom roles) to identities at the Key Vault's scope (or even higher, like resource group or subscription).
+
+enable_rbac_authorization = true in your Terraform:
+
+This specific setting in your azurerm_key_vault resource tells Azure to use the Azure RBAC permission model for this Key Vault.
+
+When enable_rbac_authorization is set to true, the access_policy block within your azurerm_key_vault resource is effectively ignored by Azure. Terraform might still accept it in the HCL (HashiCorp Configuration Language) and you'll see it in your state file, but Azure will not apply those access policies because you've chosen the RBAC model. This is why you see the message "Access policies are not available" in the portal.
+
+What you need to do now:
+
+Since your Key Vault is configured for Azure RBAC, you need to grant permissions using Azure Role Assignments, not the deprecated access policies.
+
+For your Azure Function's Managed Identity to access secrets in this Key Vault, you would typically use a separate Terraform resource: azurerm_role_assignment.
+
+Example of how to grant permissions via RBAC in Terraform:
+
+Terraform
+
+# Define your Key Vault
+resource "azurerm_key_vault" "kv" {
+  name                      = "${var.project_name}kv"
+  location                  = azurerm_resource_group.rg.location
+  resource_group_name       = azurerm_resource_group.rg.name
+  tenant_id                 = data.azurerm_client_config.current.tenant_id
+  # ... other Key Vault settings ...
+
+  enable_rbac_authorization = true # This is the key setting
+  
+  # The 'access_policy' block here will be ignored because enable_rbac_authorization is true
+  # access_policy {
+  #   tenant_id = data.azurerm_client_config.current.tenant_id
+  #   object_id = module.test_module.principal_id
+  #   key_permissions = ["Get", "Create", "Update", "Import", "Delete"]
+  #   secret_permissions = ["Get", "List", "Set", "Delete"]
+  #   storage_permissions = ["Get"]
+  # }
+}
+
+# Assuming you have an Azure Function App resource and its Managed Identity
+# For example, if your Azure Function App is called 'my_function_app'
+# You would first need to get its Managed Identity Principal ID
+data "azurerm_client_config" "current" {}
+
+resource "azurerm_resource_group" "rg" {
+  name     = "${var.project_name}-rg"
+  location = "East US"
+}
+
+resource "azurerm_function_app" "func_app" {
+  name                = "${var.project_name}-func"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  app_service_plan_id = azurerm_app_service_plan.plan.id
+  storage_account_name = azurerm_storage_account.sa.name
+  storage_account_access_key = azurerm_storage_account.sa.primary_access_key
+  # ... other function app settings ...
+
+  identity {
+    type = "SystemAssigned" # Enable a System-Assigned Managed Identity
+  }
+}
+
+resource "azurerm_app_service_plan" "plan" {
+  name                = "${var.project_name}-plan"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  kind                = "FunctionApp"
+  sku {
+    tier = "Consumption"
+    size = "Y1"
+  }
+}
+
+resource "azurerm_storage_account" "sa" {
+  name                     = "${var.project_name}sa"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+
+# This is the correct way to grant permissions using RBAC
+# Assign the "Key Vault Secrets User" role to your Function App's Managed Identity
+resource "azurerm_role_assignment" "key_vault_secret_user_assignment" {
+  scope                = azurerm_key_vault.kv.id
+  role_definition_name = "Key Vault Secrets User" # Standard role for getting secrets
+  principal_id         = azurerm_function_app.func_app.identity[0].principal_id # Use the Function App's Managed Identity
+}
+
+# If your module.test_module.principal_id refers to a different Service Principal/Managed Identity
+# and that also needs access, you would create another role assignment for it:
+resource "azurerm_role_assignment" "test_module_kv_access" {
+  scope                = azurerm_key_vault.kv.id
+  role_definition_name = "Key Vault Secrets User" # Or other appropriate role
+  principal_id         = module.test_module.principal_id
+}
+By removing the access_policy block (or understanding it's ignored) and using azurerm_role_assignment instead, you'll correctly grant permissions according to the Azure RBAC model, which is the modern and preferred way to manage access to Key Vault.
+```
+
+```
+2025-07-26T12:18:56Z   [Information]   Python HTTP trigger function processed a request.
+2025-07-26T12:18:56Z   [Information]   No environment configuration found.
+2025-07-26T12:18:56Z   [Information]   ManagedIdentityCredential will use App Service managed identity
+2025-07-26T12:18:56Z   [Information]   Request URL: 'https://sgppipelinekv.vault.azure.net/secrets/test/?api-version=REDACTED'
+Request method: 'GET'
+Request headers:
+    'Accept': 'application/json'
+    'x-ms-client-request-id': '<some id>'
+    'User-Agent': 'azsdk-python-keyvault-secrets/4.10.0 Python/3.12.10 (Linux-5.15.164.1-1.cm2-x86_64-with-glibc2.36)'
+No body was attached to the request
+2025-07-26T12:18:56Z   [Information]   Response status: 401
+Response headers:
+    'Cache-Control': 'no-cache'
+    'Pragma': 'no-cache'
+    'Content-Type': 'application/json; charset=utf-8'
+    'Expires': '-1'
+    'x-ms-keyvault-region': 'eastus'
+    'x-ms-client-request-id': '<some id>'
+    'x-ms-request-id': '<some id>'
+    'x-ms-keyvault-service-version': '1.9.2584.1'
+    'x-ms-keyvault-network-info': 'conn_type=Subnet;addr=172.24.0.179;act_addr_fam=InterNetworkV6;'
+    'X-Content-Type-Options': 'REDACTED'
+    'Strict-Transport-Security': 'REDACTED'
+    'WWW-Authenticate': 'Bearer authorization="https://login.microsoftonline.com/<some id>", resource="https://vault.azure.net"'
+    'Date': 'Sat, 26 Jul 2025 12:18:55 GMT'
+    'Content-Length': '97'
+2025-07-26T12:18:56Z   [Information]   Request URL: 'http://169.254.255.2:8081/msi/token?api-version=REDACTED&resource=REDACTED'
+Request method: 'GET'
+Request headers:
+    'X-IDENTITY-HEADER': 'REDACTED'
+    'Metadata': 'REDACTED'
+    'User-Agent': 'azsdk-python-identity/1.23.1 Python/3.12.10 (Linux-5.15.164.1-1.cm2-x86_64-with-glibc2.36)'
+No body was attached to the request
+2025-07-26T12:18:56Z   [Information]   Response status: 400
+Response headers:
+    'Content-Type': 'application/json; charset=utf-8'
+    'Date': 'Sat, 26 Jul 2025 12:18:55 GMT'
+    'Server': 'Kestrel'
+    'Transfer-Encoding': 'chunked'
+    'X-CORRELATION-ID': 'REDACTED'
+2025-07-26T12:18:56Z   [Warning]   DefaultAzureCredential failed to retrieve a token from the included credentials.
+Attempted credentials:
+	EnvironmentCredential: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.
+Visit https://aka.ms/azsdk/python/identity/environmentcredential/troubleshoot to troubleshoot this issue.
+	ManagedIdentityCredential: App Service managed identity configuration not found in environment. invalid_scope
+	SharedTokenCacheCredential: SharedTokenCacheCredential authentication unavailable. No accounts were found in the cache.
+	AzureCliCredential: Azure CLI not found on path
+	AzurePowerShellCredential: PowerShell is not installed
+	AzureDeveloperCliCredential: Azure Developer CLI could not be found. Please visit https://aka.ms/azure-dev for installation instructions and then,once installed, authenticate to your Azure account using 'azd auth login'.
+To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/python/identity/defaultazurecredential/troubleshoot.
+2025-07-26T12:18:56Z   [Error]   Executed 'Functions.http_trigger' (Failed, Id=<some id>, Duration=157ms)
+```
+
+to solve the above error: https://stackoverflow.com/questions/78710321/how-to-connect-secrets-value-stored-in-azure-key-vault-to-azure-app-service-env
+
+we need to set the environment variables in our function app so that when DefaultAzureCredentials() runs it loads these env variables as credentials
+
+so the main thing is
+- we need to set our managed identity of our azure function app to under system assigned to `on`
+- we need to set azure key vault RBAC to have our account have a key vault administrator role in order to add access policies in the first place
+- we need to have permission model in our AKV access configuration settings set to vault access policy
+- we need to create an access policy that grants getting and listing secrets
+- we need to set the principal of this application to be the managed identity of our azure function, e.g. if we search our azure function app name in the principal search box we will see it as it will have the same visible object id as our function app's managed identity's object id when we set its system assigned setting to `on`
+- we need to create a secret in AKV and once done copy its secret identifier
+- we go to our azure functions environment variables and add a new app application setting or env variable. We can it any name we want but what matters is that its corresponding value is set to `@Microsoft.KeyVault(SecretUri=<uri we copied earlier>)` where the secret identifier we just copied earlier which is usually in the form of `https://<our AKV name>.vault.azure.net/secrets/<our secret key name>/<our secret key id>`
+- we will access this secret via the ff.
+
+```
+# once deployed to azure function app environment
+# DefaultAzureCredential retrieves its client id
+# and object id as important credentials to use for
+# accessing the azure key vault
+credential = DefaultAzureCredential()
+
+secret_client = SecretClient(
+    vault_url="https://sgppipelinekv.vault.azure.net",
+    credential=credential
+)
+
+test = secret_client.get_secret('test')
+```
+
+here because assuming we deployed our function `DefaultAzureCredential()` loads certain environment variables not visible to us that it uses to authenticate to AKV, which would be our managed identity
+
+`secret_client.get_secret('test')` is the final phase where we retrieve the secret key we created using the name we set it to, which returns a secret object. To get the value of this secret we would have to use `.value` a getter of this object
+
+```
+alright nice, I've configured this azure function to specifically be able to access secret keys from my key vault like tenant id, azure client secret, azure client id and subscription id so that my azure function can use these as credentials to generate a sas token that will be used to write to my blob storage account because as we know SAS is the best and most secure way to write to azure blob
+
+That's an interesting approach, and it demonstrates a good understanding of how to use Key Vault to protect credentials!
+
+However, your statement that "SAS is the best and most secure way to write to Azure Blob" in this specific scenario (an Azure Function writing to Blob Storage) is actually not the optimal or most secure method when Managed Identities are available.
+
+Let's clarify why and what the preferred method is:
+
+Understanding Your Current Setup:
+
+Azure Function (with Managed Identity) -> securely gets Entra ID credentials (client ID, client secret, tenant ID) from Key Vault.
+
+Azure Function uses these Entra ID credentials -> generates a SAS token.
+
+Azure Function uses the SAS token -> writes to Azure Blob Storage.
+
+Why this is not the most secure/optimal for Azure-to-Azure communication:
+
+You've introduced an unnecessary layer of complexity and potential attack surface by generating a SAS token from Entra ID credentials within your Azure Function for an Azure-to-Azure call.
+
+Overhead: You're managing Entra ID credentials (client ID, client secret) in Key Vault, retrieving them, and then using them to generate another credential (the SAS token). This adds more code, more points of failure, and more objects to manage.
+
+Redundancy: The purpose of Managed Identities is to allow an Azure service (like your Function) to authenticate directly to other Azure services (like Blob Storage) using its own identity in Microsoft Entra ID, without needing any secrets or SAS tokens.
+
+The Best and Most Secure Way for Azure Function to write to Azure Blob Storage:
+
+The most secure and streamlined method for an Azure Function to write to Azure Blob Storage is using its Managed Identity with Azure Role-Based Access Control (RBAC) directly.
+
+Here's how it works and why it's superior:
+
+Enable Managed Identity for Azure Function: (You've already done this, great!) Azure automatically manages the identity and its credentials in Microsoft Entra ID.
+
+Grant RBAC Role on Storage Account: Go to your Azure Storage Account in the Azure portal (or use Terraform/CLI) and navigate to "Access control (IAM)". Assign a suitable built-in RBAC role to your Azure Function's Managed Identity.
+
+For writing data, the most common role is "Storage Blob Data Contributor".
+
+For read-only, it would be "Storage Blob Data Reader."
+
+Direct Authentication in Function Code: Your Function's code will then authenticate directly to Blob Storage using DefaultAzureCredential (or ManagedIdentityCredential explicitly if preferred). The Azure SDK automatically detects the Managed Identity and uses it for authentication.
+
+Code Example (Conceptual Python):
+
+Python
+
+import os
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+
+# No need to get client_id, client_secret, tenant_id from Key Vault for this!
+
+# Get Storage Account URL (or connection string, though Managed Identity is better)
+# You might pass this as an environment variable in the Function App settings
+storage_account_url = os.environ["AZURE_STORAGE_ACCOUNT_URL"] # e.g., "https://yourstorageaccount.blob.core.windows.net"
+
+try:
+    # Authenticate using the Function's Managed Identity
+    credential = DefaultAzureCredential()
+
+    # Create a BlobServiceClient
+    blob_service_client = BlobServiceClient(account_url=storage_account_url, credential=credential)
+
+    # Get a client for the specific container
+    container_client = blob_service_client.get_container_client("your-container-name")
+
+    # Upload data
+    blob_name = "your_file.txt"
+    data = b"Hello, Azure Blob Storage from Managed Identity!"
+    container_client.upload_blob(name=blob_name, data=data, overwrite=True)
+
+    print(f"Successfully uploaded {blob_name} using Managed Identity.")
+
+except Exception as ex:
+    print(f"Error writing to blob storage: {ex}")
+
+Why this is more secure and "best practice":
+
+No Secret Handling: You completely eliminate the need for your Function to handle (retrieve from KV, generate with) client secrets or SAS tokens for this specific Azure-to-Azure interaction. Less secret handling = less risk.
+
+Automatic Credential Rotation: The credentials of the Managed Identity are automatically managed and rotated by Azure AD, so you never have to worry about client secret expiry or manual rotation.
+
+Least Privilege: RBAC allows you to grant very specific permissions (e.g., only "write" to blobs in a particular container) directly to your Function's identity.
+
+Centralized Control: All permissions are managed centrally in Azure RBAC, which is auditable and consistent across Azure resources.
+
+When are SAS Tokens still appropriate?
+
+SAS tokens are excellent for:
+
+Delegating access to external, untrusted clients: (e.g., a mobile app directly uploading photos, a browser downloading files). These clients usually don't have Azure AD identities.
+
+Time-limited, granular access for specific operations: Providing temporary access for a specific task.
+
+In summary, while your current setup works, for an Azure Function writing to Blob Storage, leveraging Managed Identities with direct RBAC permissions is the more secure, robust, and simpler solution. It cuts out the middleman of secret generation when it's not strictly necessary.
+```
+
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
 * end to end azure DE tutorial: https://www.youtube.com/watch?v=lyp8rlpJc3k&list=PLCBT00GZN_SAzwTS-SuLRM547_4MUHPuM&index=45&t=5222s
