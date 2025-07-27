@@ -94,12 +94,26 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
     # in a internal server 500 error
     credential = DefaultAzureCredential()
 
+    # 
     secret_client = SecretClient(
         vault_url="https://sgppipelinekv.vault.azure.net",
         credential=credential
     )
 
     test = secret_client.get_secret('test')
+    storage_account_name = secret_client.get_secret("StorageAccountName")
+
+    # create client with generated sas token
+    blob_service_client = BlobServiceClient(
+        account_url=f"https://{storage_account_name.value}.blob.core.windows.net", 
+        credential=credential
+    )
+
+    # retrieves container client to retrieve blob client
+    misc_container_client = blob_service_client.get_container_client(f"{storage_account_name.value}-miscellaneous")
+
+    for blob in misc_container_client.list_blobs():
+        print(blob.name)
     
 
     name = req.params.get('name')
@@ -112,10 +126,10 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
             name = req_body.get('name')
 
     if name:
-        return func.HttpResponse(f"Hello, {name}. This HTTP triggered function executed successfully with test key {test.value}.")
+        return func.HttpResponse(f"Hello, {storage_account_name.value}. This HTTP triggered function executed successfully with test key {test.value}.")
     else:
         return func.HttpResponse(
-             f"This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response with test key {test.value}.",
+             f"This HTTP triggered function executed successfully with {storage_account_name.value}. Pass a name in the query string or in the request body for a personalized response with test key {test.value}.",
              status_code=200
         )
     
@@ -171,69 +185,70 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     RANGE = n_links if not RANGE else int(RANGE)
 
     # once deployed to azure function app environment
-    # DefaultAzureCredential retrieves its client id
-    # and object id as important credentials to use for
-    # accessing the azure key vault
+    # DefaultAzureCredential() retrieves the azure functions
+    # managed identity we created when we enabled system 
+    # assigned managed identity which assigns an object id
+    # to our azure function app and in which we permitted this
+    # object id in our azure key vault and azure blob storage 
+    # to have access to these resources. This object id is what
+    # we use to access these resources
     credential = DefaultAzureCredential()
 
+    # pass this as credential to secret client as well
+    # as our blob storage client later
     secret_client = SecretClient(
         vault_url="https://sgppipelinekv.vault.azure.net",
         credential=credential
     )
 
+    # load secret keys from key vault
     test = secret_client.get_secret('test')
+    storage_account_name = secret_client.get_secret('storage-account-name')
+    resource_group_name = secret_client.get_secret('resource-group-name')
     
+    # # Retrieve credentials from environment variables
+    # storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+    # storage_account_key = os.environ.get("STORAGE_ACCOUNT_KEY")
 
-    # Retrieve credentials from environment variables
-    storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
-    storage_account_key = os.environ.get("STORAGE_ACCOUNT_KEY")
-
-    account_sas_kwargs = {
-        "account_name": storage_account_name,
-        "account_key": storage_account_key,
-        "services": Services(blob=True, queue=True, fileshare=True),
-        "resource_types": ResourceTypes(
-            service=True, 
-            container=True, 
-            object=True
-        ), 
-        "permission": AccountSasPermissions(
-            read=True, 
-            write=True,
-            delete=True,
-            list=True,
-            add=True,
-            create=True,
-            update=True,
-            process=True
-        ), 
-        "start": datetime.utcnow(),  
-        "expiry": datetime.utcnow() + timedelta(days=1) 
-    } 
+    # account_sas_kwargs = {
+    #     "account_name": storage_account_name,
+    #     "account_key": storage_account_key,
+    #     "services": Services(blob=True, queue=True, fileshare=True),
+    #     "resource_types": ResourceTypes(
+    #         service=True, 
+    #         container=True, 
+    #         object=True
+    #     ), 
+    #     "permission": AccountSasPermissions(
+    #         read=True, 
+    #         write=True,
+    #         delete=True,
+    #         list=True,
+    #         add=True,
+    #         create=True,
+    #         update=True,
+    #         process=True
+    #     ), 
+    #     "start": datetime.utcnow(),  
+    #     "expiry": datetime.utcnow() + timedelta(days=1) 
+    # } 
     
-    # generated sas token is at the level of the storage account, 
-    # permitting services like blobs, files, queues, and tables 
-    # to be read, listed, retrieved, updated, deleted etc. 
-    # where allowed resource types are service, container 
-    sas_token = generate_account_sas(**account_sas_kwargs)
-    
+    # # generated sas token is at the level of the storage account, 
+    # # permitting services like blobs, files, queues, and tables 
+    # # to be read, listed, retrieved, updated, deleted etc. 
+    # # where allowed resource types are service, container 
+    # sas_token = generate_account_sas(**account_sas_kwargs)
 
-    # Upload the file
-    # with open(os.path.join(DATA_DIR, "1028-20100710-hne.tgz"), "rb") as data:
-    #     container_client.upload_blob(name="test_signal.tgz", data=data, overwrite=True)
-
-    # view filesr
-    # https://sgppipelinesa.blob.core.windows.net/sgppipelinesa-bronze
-    # https://sgppipelinesa.blob.coe.windows.net/sgppipelinesa-bronze?restype=REDACTED&comp=REDACTED
+    # begin writing files in blob storage
     try:
         # create client with generated sas token
         blob_service_client = BlobServiceClient(
-            account_url=f"https://{storage_account_name}.blob.core.windows.net", 
-            credential=sas_token
+            account_url=f"https://{storage_account_name.value}.blob.core.windows.net", 
+            credential=credential
         )
 
         # retrieves container client to retrieve blob client
-        misc_container_client = blob_service_client.get_container_client(f"{storage_account_name}-miscellaneous")
+        misc_container_client = blob_service_client.get_container_client(f"{storage_account_name.value}-miscellaneous")
         
         # using newly created blob client we upload the json 
         # object as a file. There are 6321 items of these urls

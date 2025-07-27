@@ -17,6 +17,7 @@
 - to automate this however we would need to 
 
 * to run instead your azure function that scrapes the list of files from an http resource and dumps these as a json object in azure blob storage representing the lookup object that the Lookup activity in ADF runs, in ADF we need to have this function not access the tenant_id, client_id, client_secret, and subscription_id anymore locally, because this would not work now when deployed. To do this we would have our azure function access now these secrets from azure key vault (assuming we place these secrets instead in azure key vault assuming its role based access control has the permission azure key vault administrator set to our user/service principal). But to even have our function access these secrets in key vault would need another layer of permission as making these secrets publicly available would defeat the purpose of it being a secret in the first place. To resolve this we would have to create a managed identity or in a sense grant the azure function and only the azure function to have exclusive access to these azure key vault secret credentials, and to do this we need to create a manged identity inside our azure function app. https://medium.com/@dssc2022yt/accessing-azure-key-vault-secrets-with-azure-functions-2e651980f292 This is a tutorial to allow your azure function and only your azure function to access a secret key from azure key vault
+* set RBAC of azure blob storage to managed identity of azure function app to STorage Blob Data Contributor
 
 
 

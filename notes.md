@@ -2108,9 +2108,20 @@ secret_client = SecretClient(
 test = secret_client.get_secret('test')
 ```
 
+- unfortunately sometimes we will need to add more secrets to azure keyvault but bhevause we set the permission model to vault access policy instead orf RBAC it will raise `The operation "List" is not enabled in this key vault's access policy.` when we go to our secrets tab in AKV. As a workaround we can revert back to the old permission model RBAC and once we create our keys we revert back to vault access policy
+ 
+
 here because assuming we deployed our function `DefaultAzureCredential()` loads certain environment variables not visible to us that it uses to authenticate to AKV, which would be our managed identity
 
 `secret_client.get_secret('test')` is the final phase where we retrieve the secret key we created using the name we set it to, which returns a secret object. To get the value of this secret we would have to use `.value` a getter of this object
+
+https://learn.microsoft.com/en-us/answers/questions/1254022/getting-403-forbidden-access-is-denied-you-do-not
+
+to list secrets under a vault access policy permission model we need to add another access policy with a principal that's not aour function app but the azure user itself...us. 
+
+kaya di gumagana nung nagadd ka ng secrets and also added environment variables is because nagkamali ka ng name. It is good practice to always and always name your secret in azure key vault and your environment variable in the azure function app as the same. para pag inaccess using `secret_client.get_secret("<secretkey name>")` walang conflict
+
+another issue is adding parameters in azure function apps. Because for some reason pag nagadd ng params nag reresult in internal server 500 error na naman. Pero no talagang nagerror kanina is kasi mali yung prior code statements
 
 ```
 alright nice, I've configured this azure function to specifically be able to access secret keys from my key vault like tenant id, azure client secret, azure client id and subscription id so that my azure function can use these as credentials to generate a sas token that will be used to write to my blob storage account because as we know SAS is the best and most secure way to write to azure blob
