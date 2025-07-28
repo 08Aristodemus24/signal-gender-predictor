@@ -1,12 +1,3 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
-from selenium.webdriver.support import expected_conditions as EC
-
 from azure.identity import DefaultAzureCredential, ClientSecretCredential
 from azure.storage.blob import (
     BlobServiceClient,
@@ -31,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from pathlib import Path
 from urllib.parse import urlencode
+from bs4 import BeautifulSoup
 
 import time
 import requests
@@ -38,6 +30,7 @@ import os
 import azure.functions as func
 import logging
 import json
+import re
 
 
 # # this is strictly used only in development
@@ -110,12 +103,35 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
     )
 
     # retrieves container client to retrieve blob client
+    # writes json file to the selected container 
     misc_container_client = blob_service_client.get_container_client(f"{storage_account_name.value}-miscellaneous")
 
-    for blob in misc_container_client.list_blobs():
-        print(blob.name)
-    
+    # create test dicitonary to convert to json object
+    test = [
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1028-20100710-hne.tgz",
+            "RelativeURL": "1028-20100710-hne.tgz",
+            "FileName": "1028-20100710-hne.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1337ad-20170321-ajg.tgz",
+            "RelativeURL": "1337ad-20170321-ajg.tgz",
+            "FileName": "1337ad-20170321-ajg.tgz"
+        }
+    ]
+    test_json = json.dumps(test, indent=4).encode("utf-8")
 
+    # create file in blob container and upload the json object
+    test_client = misc_container_client.get_blob_client("signal_files_lookup_test.json")
+    test_client.upload_blob(test_json, overwrite=True)
+
+    # # listing containers and blobs
+    # for container in blob_service_client.list_containers():
+    #     for blob in blob_service_client.get_container_client(container.name).list_blobs():
+    #         print(blob.name)
+
+    
+    # if there is a passed parameter get its value
     name = req.params.get('name')
     if not name:
         try:
@@ -126,48 +142,23 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
             name = req_body.get('name')
 
     if name:
-        return func.HttpResponse(f"Hello, {storage_account_name.value}. This HTTP triggered function executed successfully with test key {test.value}.")
+        return func.HttpResponse(f"Hello {name}, your HTTP triggered function wrote test.json to storage container {storage_account_name.value}.")
     else:
         return func.HttpResponse(
-             f"This HTTP triggered function executed successfully with {storage_account_name.value}. Pass a name in the query string or in the request body for a personalized response with test key {test.value}.",
-             status_code=200
+            f"Hello, your HTTP triggered function wrote test.json to storage container {storage_account_name.value}.",
+            status_code=200
         )
     
 @app.route(route="extract_signals")
 def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
-    # define chrome options
-    chrome_options = ChromeOptions()
-    chrome_options.add_experimental_option('detach', True)
-    
-    # arguments
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    
-    service = ChromeService(executable_path=ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.get('http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/')
-
-    # wait 5 seconds for page load
-    time.sleep(5)
-
-    # scrolls down to very bottom
-    driver.execute_script("window.scrollBy(0, document.body.scrollHeight)") 
-
-    # extracts all anchor tags in page
-    anchor_tags = driver.find_elements(By.TAG_NAME, "a")
-    def helper(a_tag):
-        # this will extract the href of all acnhor tags 
-        link = a_tag.get_attribute('href')
-        return link
-
-    # concurrently read and load all .tgz files
-    with ThreadPoolExecutor() as exe:
-        links = list(exe.map(helper, anchor_tags))
+    response = requests.get("http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/")
+    r_txt = str(response.text)
+    pattern = r'<a\s+?href="([^"]*)"'
+    links = re.findall(pattern, r_txt)
+    download_links = list(filter(lambda link: link.endswith(".tgz") , links))
 
     # exclude all hrefs without .tgz extension
     # http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1028-20100710-hne.tgz
-    download_links = list(filter(lambda link: link.endswith('.tgz'), links))
     batched_signal_files_lookup_jsons = batch_signal_files_lookup(download_links, batch_size=5000)
 
     # get number of downloads
@@ -203,8 +194,8 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
 
     # load secret keys from key vault
     test = secret_client.get_secret('test')
-    storage_account_name = secret_client.get_secret('storage-account-name')
-    resource_group_name = secret_client.get_secret('resource-group-name')
+    storage_account_name = secret_client.get_secret('StorageAccountName')
+    # resource_group_name = secret_client.get_secret('resource-group-name')
     
     # # Retrieve credentials from environment variables
     # storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
@@ -260,9 +251,7 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         print(f"Error operating on blobs: {e}")
 
-
     return func.HttpResponse(
-        # f"This HTTP triggered function extracted {n_links} audio signals successfully: {download_links[:RANGE]}",
-        f"This HTTP triggered the uploading of the signals to azure data lake storage using key: {test}",
+        f"This HTTP triggered function extracted {n_links} audio signals successfully to storage account {storage_account_name.value}",
         status_code=200
     )

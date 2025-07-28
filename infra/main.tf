@@ -69,7 +69,9 @@ resource "azurerm_key_vault" "kv" {
     ]
   }
 
-  enable_rbac_authorization = true
+  # we want our permission model to be 'vault access policy'
+  # not 'role based access control (RBAC)'
+  enable_rbac_authorization = false
 }
 
 # azure data lake storage for each staging layer in pipeline

@@ -18,6 +18,26 @@
 
 * to run instead your azure function that scrapes the list of files from an http resource and dumps these as a json object in azure blob storage representing the lookup object that the Lookup activity in ADF runs, in ADF we need to have this function not access the tenant_id, client_id, client_secret, and subscription_id anymore locally, because this would not work now when deployed. To do this we would have our azure function access now these secrets from azure key vault (assuming we place these secrets instead in azure key vault assuming its role based access control has the permission azure key vault administrator set to our user/service principal). But to even have our function access these secrets in key vault would need another layer of permission as making these secrets publicly available would defeat the purpose of it being a secret in the first place. To resolve this we would have to create a managed identity or in a sense grant the azure function and only the azure function to have exclusive access to these azure key vault secret credentials, and to do this we need to create a manged identity inside our azure function app. https://medium.com/@dssc2022yt/accessing-azure-key-vault-secrets-with-azure-functions-2e651980f292 This is a tutorial to allow your azure function and only your azure function to access a secret key from azure key vault
 * set RBAC of azure blob storage to managed identity of azure function app to STorage Blob Data Contributor
+* need to create docker image instead to host the function app locally then on azure container registry itself integrated with azure function app as we need a container environment that can accomodate for chrome webdriver. Current workaround can be beautiful soup instead
+```
+> const a_tags_selector = "body > pre > a"
+undefined
+> const a_tags = document.querySelectorAll(a_tags_selector)
+undefined
+> a_tags.length
+6325
+>
+> a_tags.forEach((node) => {
+    if(node.href.includes(".tgz")){
+        hrefs.push(node.href)
+    }
+})
+>
+> hrefs
+(6321) ['http://www.repository.voxforge1.org/downloads/Spee…runk/Audio/Main/16kHz_16bit/1028-20100710-hne.tgz', 'http://www.repository.voxforge1.org/downloads/Spee…nk/Audio/Main/16kHz_16bit/1337ad-20170321-ajg.tgz', ...]
+```
+we can convert the above to python beautiful soup  code instead. *While this works on javascript, doing so using automated frameworks *
+
 * set RBAC of azure blob storage to managed identity assigned to databricks workspace to storage blob data contributor. Because unlike azure function apps, azure VMs, etc. azure databricks has no identity or managed identity that it can work with to authenticate to azure blob storage or any kind of service. This needs a unity catalog access connector service that we need to creawte and from there create a system assigned managed identity which will generate its own object id, we then use this resources id as the managed identity itself, we copy it and then go to our workspaces credentials and create a credential, we set the access connector id to resource id managed identity `/subscriptions/<subscription id>/resourceGroups/<databricks rg sgppipelinerg>/providers/Microsoft.Databricks/accessConnectors/unity-catalog-access-connector` which our databricks workspace notebooks can use to authenticate to access azure blob storage when we do decide to read or write or whatever from or into azure blob storage e.g. azure databricks (uses this credential) -> azure blob storage (sees the credential has been granted a role based access control)
 
 

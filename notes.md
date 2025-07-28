@@ -439,7 +439,7 @@ but once this has finished debugging it will show us http://localhost:7071/api/h
       + resource_group_name    = "sgppipelinerg" 
 ```
 
-* the most likely reason why you are still encoutnering a code 500 internal server error even when you've added `*`, `https://portal.azure.com`, `https://functions.azure.com`, `https://*.com`, and `http://*.com` is because you maybe using a relative module inside your `function_app.py` that has not been included in deployment. https://stackoverflow.com/questions/68009769/azure-function-500-internal-internal-server-error-in-run-test-mode
+* the most likely reason why you are still encoutnering a code 500 internal server error even when you've added `*`, `https://portal.azure.com`, `https://functions.azure.com`, `https://*.com`, and `http://*.com` to solve the cross origin resource sharing error is because you maybe using a relative module inside your `function_app.py` that has not been included in deployment. https://stackoverflow.com/questions/68009769/azure-function-500-internal-internal-server-error-in-run-test-mode
 
 
 Okay, an "Internal Server Error" (HTTP 500) in a deployed Azure Function, especially when it works fine locally, is a very common scenario. The fact that your function extract_signals depends on a relative import called download which targets the local machine is a huge red flag and almost certainly the cause of your problem.
@@ -2218,6 +2218,13 @@ Time-limited, granular access for specific operations: Providing temporary acces
 
 In summary, while your current setup works, for an Azure Function writing to Blob Storage, leveraging Managed Identities with direct RBAC permissions is the more secure, robust, and simpler solution. It cuts out the middleman of secret generation when it's not strictly necessary.
 ```
+
+* a lot is connected to our azure function but sometimes we need to delete it to force an update to our code. So we have to redo the ff. again (this is assuming you tried `func azure functionapp publish <name of our function app resource>` as a last resort, because sometimes deploying via our azure extension pane may show a successful deployment, however running a more manual command like the former may reveal certain errors that may lie in our code case on point the reason why the code was not updating was because of the requirements.txt which included a pywin32 package where pip raised an error that a version of pywin32 package could not be found or that a dependency of some packages like urllib3 and conflicted with wrclib):
+- create managed identity of function app again by enabling system assigned managed identity
+- set CORS again of function app to `*`, `https://portal.azure.com`, `https://functions.azure.com`, `https://*.com`, and `http://*.com`
+- add environment variables again of the same name as the secret keys created in the azure key vault and set to @Microsoft.KeyVault(SecretUri=<secret identifier>)
+- delete old access policy in azure key vault tied to old function app and create another one with identity of new function app\
+- delete old RBAC of old function app for azure blob storage and create another one using the system assigned managed identity of the new function app
 
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
