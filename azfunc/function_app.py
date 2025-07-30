@@ -1,19 +1,6 @@
 from azure.identity import DefaultAzureCredential, ClientSecretCredential
-from azure.storage.blob import (
-    BlobServiceClient,
-    ContainerClient,
-    BlobClient,
-
-    BlobSasPermissions,
-    ContainerSasPermissions,
-    AccountSasPermissions,
-    Services,
-    ResourceTypes,
-    UserDelegationKey,
-    generate_account_sas,
-    generate_container_sas,
-    generate_blob_sas,
-)
+from azure.storage.blob import BlobServiceClient
+from azure.storage.filedatalake import DataLakeServiceClient
 from azure.keyvault.secrets import SecretClient
 
 from datetime import datetime, timedelta
@@ -97,14 +84,14 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
     storage_account_name = secret_client.get_secret("StorageAccountName")
 
     # create client with generated sas token
-    blob_service_client = BlobServiceClient(
-        account_url=f"https://{storage_account_name.value}.blob.core.windows.net", 
+    datalake_service_client = DataLakeServiceClient(
+        account_url=f"https://{storage_account_name.value}.dfs.core.windows.net", 
         credential=credential
     )
 
-    # retrieves container client to retrieve blob client
-    # writes json file to the selected container 
-    misc_container_client = blob_service_client.get_container_client(f"{storage_account_name.value}-miscellaneous")
+    # retrieves file system client to retrieve datalake client
+    # writes json file to the selected container. The 
+    misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name.value}-miscellaneous")
 
     # create test dicitonary to convert to json object
     test = [
@@ -122,13 +109,20 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
     test_json = json.dumps(test, indent=4).encode("utf-8")
 
     # create file in blob container and upload the json object
-    test_client = misc_container_client.get_blob_client("signal_files_lookup_test.json")
-    test_client.upload_blob(test_json, overwrite=True)
+    test_client = misc_container_client.get_file_client("signal_files_lookup_test.json")
+    test_client.upload_data(test_json, overwrite=True)
 
-    # # listing containers and blobs
-    # for container in blob_service_client.list_containers():
-    #     for blob in blob_service_client.get_container_client(container.name).list_blobs():
-    #         print(blob.name)
+    # # listing containers/file system, directories, and paths/blobs
+    # for fs in datalake_service_client.list_file_systems():
+    #     print(f"file system name: {fs.name}")
+
+
+    # container = datalake_service_client.get_file_system_client("sgppipelinesa-miscellaneous")
+    # dir = container.get_directory_client("lookup_files")
+    # print(f"directory name: {dir.path_name}")
+    # files = dir.get_paths(recursive=True)
+    # for file in files:
+    #     print(file.name)
 
     
     # if there is a passed parameter get its value
@@ -233,20 +227,21 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     # begin writing files in blob storage
     try:
         # create client with generated sas token
-        blob_service_client = BlobServiceClient(
-            account_url=f"https://{storage_account_name.value}.blob.core.windows.net", 
+        datalake_service_client = DataLakeServiceClient(
+            account_url=f"https://{storage_account_name.value}.dfs.core.windows.net", 
             credential=credential
         )
 
-        # retrieves container client to retrieve blob client
-        misc_container_client = blob_service_client.get_container_client(f"{storage_account_name.value}-miscellaneous")
+        # retrieves file system client to retrieve datalake client
+        # writes json file to the selected container. The 
+        misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name.value}-miscellaneous")
         
         # using newly created blob client we upload the json 
         # object as a file. There are 6321 items of these urls
         # in total
         for i, batch in enumerate(batched_signal_files_lookup_jsons):
-            signal_files_lookup_client = misc_container_client.get_blob_client(f"signal_files_lookup_{i + 1}.json")
-            signal_files_lookup_client.upload_blob(batch, overwrite=True)
+            signal_files_lookup_client = misc_container_client.get_file_client(f"signal_files_lookup_{i + 1}.json")
+            signal_files_lookup_client.upload_data(batch, overwrite=True)
 
     except Exception as e:
         print(f"Error operating on blobs: {e}")

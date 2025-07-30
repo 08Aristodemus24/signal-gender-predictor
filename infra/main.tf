@@ -86,7 +86,7 @@ resource "azurerm_storage_account" "adls" {
   # so we can work other services like azure ML because
   # the latter does not use a storage account with heirarchical
   # namespace enableds
-  is_hns_enabled = "false"
+  is_hns_enabled = "true"
   access_tier    = "Cool"
 }
 
@@ -98,8 +98,7 @@ resource "azurerm_storage_container" "containers" {
   name                 = "${var.project_name}sa-${each.value}"
   storage_account_name = "${var.project_name}sa"
   depends_on           = [azurerm_storage_account.adls]
-  # storage_account_id = azurerm_storage_account.adls.id
-
+  # storage_account_id = azurerm_storage_account.adls.id  
 }
 
 # azure databricks workspace for transforming data at each staging layer

@@ -2226,6 +2226,24 @@ In summary, while your current setup works, for an Azure Function writing to Blo
 - delete old access policy in azure key vault tied to old function app and create another one with identity of new function app\
 - delete old RBAC of old function app for azure blob storage and create another one using the system assigned managed identity of the new function app
 
+* when setting up databricks cluster we may encounter a `virtual machine (VM) stock keeping unit (SKU) is not available in your region` error. We can run `az vm list-skus --location <region e.g. eastus, centralus, westus> --size <e.g. Standard_D, Standard_E, Standard_L, Standard_F, Standard_N> --all --output table` 
+
+* Sometimes even when you already set the roles and permissions the unity catalog access connector's managed identity is allowed to have `dbutils.fs.ls("abfss://<container/file system name>@<storage account name>.dfs.core.windows.net/")` may still raise a `fs.azure.account_key` is missing indicating that databricks does not have sufficient permissions to access the container/file system. There may be causes to this but the most common is the ff: 
+- we must be careful to enter the URL in creating the external location to where databricks would be reading, writing, listing, etc. files e.g. `abfss://<container/file system name>@<storage account name>.dfs.core.windows.net/`
+- we must make sure our credential is created in our azure databricks catalog
+- we must make sure the RBAC is set to the managed identity of the unity catalog access connector service
+
+
+a ML Cluster with "no isolation shared" as access mode. This cluster is not compatible with unity. We set fs.azure.* variables in the cluster conf. like below to fix our issue:
+
+fs.azure.account.oauth2.client.id.mydatalake.dfs.core.windows.net: {{secrets/mysecret/myclientid}}. 
+
+Is there a better/proper way to do it ?
+
+* reason why you get `Make sure the value of Authorization header is formed correctly including the signature` when accessing a newly created azure data lake storage container's files is because in RBAC we haven't added us the user ourselves to list the files in a container. We must add storage blob data contributor and storage queue data contributor as roles to our user account  
+
+
+
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
 * end to end azure DE tutorial: https://www.youtube.com/watch?v=lyp8rlpJc3k&list=PLCBT00GZN_SAzwTS-SuLRM547_4MUHPuM&index=45&t=5222s
@@ -2246,3 +2264,5 @@ https://stackoverflow.com/questions/78529445/azure-container-access-via-python-s
 https://prashanth-kumar-ms.medium.com/azure-managed-identity-integration-with-storage-account-5bea9261a4d1
 * generating shared access token to access the azure blob storage: https://learn.microsoft.com/en-us/azure/ai-services/translator/document-translation/how-to-guides/create-sas-tokens?tabs=Containers (this can be basically be generated using a post request using your microsoft entra id service principal)
 https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegation-sas#user-delegation-sas-support-for-directory-scoped-access 
+
+* azure databricks cluster setup: https://medium.com/@phaneendraganji3/how-i-solved-the-vm-sku-not-available-in-your-region-error-while-creating-a-databricks-compute-fd8910247534
