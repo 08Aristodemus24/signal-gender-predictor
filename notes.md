@@ -32,7 +32,7 @@
 ]
 ```
 
-* coy the `subscription id` we listed earlier via az account list or from the az login command and now run `az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/<SUBSCRIPTION_ID>"` which creates the equivalent of an IAM user in AWS which will output certain credentials we need to keep safe as this will be keys needed to access our azure services like azure data lake storage 
+* coy the `subscription id` we listed earlier via `az account list` or from the `az login` command and now run `az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/<SUBSCRIPTION_ID>"` which creates the equivalent of an IAM user in AWS which will output certain credentials we need to keep safe as this will be keys needed to access our azure services like azure data lake storage 
 
 save these credentials as the ff. in an `.env` file or if possible create an azure key vault service which stores these credentials in the azure cloud
 
