@@ -40,6 +40,7 @@ we can convert the above to python beautiful soup  code instead. *While this wor
 
 * <s>set RBAC of azure blob storage to managed identity assigned to databricks workspace to storage blob data contributor. Because unlike azure function apps, azure VMs, etc. azure databricks has no identity or managed identity that it can work with to authenticate to azure blob storage or any kind of service. This needs a unity catalog access connector service that we need to creawte and from there create a system assigned managed identity which will generate its own object id, we then use this resources id as the managed identity itself, we copy it and then go to our workspaces credentials and create a credential, we set the access connector id to resource id managed identity `/subscriptions/<subscription id>/resourceGroups/<databricks rg sgppipelinerg>/providers/Microsoft.Databricks/accessConnectors/unity-catalog-access-connector` which our databricks workspace notebooks can use to authenticate to access azure blob storage when we do decide to read or write or whatever from or into azure blob storage e.g. azure databricks (uses this credential) -> azure blob storage (sees the credential has been granted a role based access control)</s>
 
+* I have a problem of using librosa in my data bricks environment, I try to read the audio signals using librosa but fail. What I want to do now is to somehow decouple librosa to data bricks and instead load the audio signals using an azure function that has librosa in its environment and then dump these numpy audio signals as parquet files in azure dtaa lale storage. What we can do is convert the numpy array loaded using librosa to a pyarrow dataframe and save this dataframe as a parquet in azure data lake storage
 * <s>I need to build the whole label df and signal array which is not yet split into train, val, and test splits</s>
 * <s>I now saved the split unprocessed signals dataset into train val and test as parquet files, but the mian thing is how can I be able to read these files in an individual manner such that the result is an array of tuples with subject name and corresponding spark dataframe that I can concurrently process e.g.
 ```
@@ -58,6 +59,8 @@ maybe if gantong array format with corresponding spark dataframes inside we can 
 * I need to split data first into training validation and test splits, by splitting dataset into male and female, then dividing each into further train, val, and test.
 * need to
 https://www.databricks.com/blog/2021/10/12/native-support-of-session-window-in-spark-structured-streaming.html
+
+
 
 # Setting up azure workspace
 * create an azure account at 

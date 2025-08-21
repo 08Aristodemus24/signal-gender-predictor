@@ -112,8 +112,6 @@ def load_audio(session: SparkSession, DIR: str, folders: list, hertz=16000):
             id_window = Window.orderBy(F.col("subjectId"))
             signal_df = signal_df.withColumn("ID", F.row_number().over(id_window) - 1)
 
-            signal_df.show()
-
             return folder, signal_df
         
     # concurrently load .wav files and trim  each .wav files
@@ -156,7 +154,7 @@ def save_data_splits(df: list[tuple[str, pyspark.sql.DataFrame]] | pyspark.sql.D
             subject_id, signal_df = subject_signal_df
             print(f"saving {subject_id} signals...")
             file_name = f"{save_path}/{split}/{subject_id}_signals.parquet"
-            signal_df.write.mode("overwrite").parquet(file_name)
+            signal_df.write.repartition(100).mode("overwrite").parquet(file_name)
         
         # loop through each subjects signal dataframe
         # concurrently

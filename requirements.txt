@@ -118,6 +118,7 @@ psutil==7.0.0
 pure_eval==0.2.3
 py4j==0.10.9.9
 pyarrow==21.0.0
+pyarrowfs-adlgen2==0.2.5
 PyAthena==3.16.0
 pycparser==2.22
 pydantic==2.11.7

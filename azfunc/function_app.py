@@ -1,7 +1,7 @@
 from azure.identity import DefaultAzureCredential, ClientSecretCredential
-from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 from azure.keyvault.secrets import SecretClient
+from azure.core.exceptions import ResourceNotFoundError
 
 from datetime import datetime, timedelta
 from argparse import ArgumentParser
@@ -18,6 +18,10 @@ import azure.functions as func
 import logging
 import json
 import re
+import io
+import librosa
+import numpy as np
+import pyarrow as pa
 
 
 # # this is strictly used only in development
@@ -142,7 +146,123 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
             f"Hello, your HTTP triggered function wrote test.json to storage container {storage_account_name.value}.",
             status_code=200
         )
+
+@app.route(route="load_signals")
+def load_signals(req: func.HttpRequest) -> func.HttpResponse:
+    # load managed identity
+    credential = DefaultAzureCredential()
+
+    # 
+    secret_client = SecretClient(
+        vault_url="https://sgppipelinekv.vault.azure.net",
+        credential=credential
+    )
+
+    storage_account_name = secret_client.get_secret("StorageAccountName")
+
+    # create client with generated sas token
+    datalake_service_client = DataLakeServiceClient(
+        account_url=f"https://{storage_account_name.value}.dfs.core.windows.net", 
+        credential=credential
+    )
+
+    # retrieves file system client/container client 
+    # to retrieve datalake client
+    bronze_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name.value}-bronze")
     
+    # we only get the directories in the first level of 
+    # the container, if it has a "/" then it means it is not
+    # an immediate folder in the container. This only really
+    # gets the subject folders 
+    subject_folders = [path.name for path in bronze_container_client.get_paths() if not "/" in path.name]
+    
+    ys = []
+
+    def helper(subject_folder):
+        
+        # for folder in folders:
+        try:
+            # lists out the files containing the .wav files in
+            # a subjects folder
+            wavs_dir = os.path.join(subject_folder, "wav")
+            path_to_wavs = [
+                path.name 
+                for path in bronze_container_client.get_paths(path=wavs_dir)
+            ]
+        
+        except ResourceNotFoundError:
+            # this is if a .wav file is not used as a directory so 
+            # try flac 
+            wavs_dir = os.path.join(subject_folder, "flac")
+            path_to_wavs = [
+                path.name 
+                for path in bronze_container_client.get_paths(path=wavs_dir)
+            ]
+
+        finally:
+            # create storage for list of signals to all be 
+            # concatenated later
+            
+
+            # create figure, and axis
+            # fig, axes = plt.subplots(nrows=len(path_to_wavs), ncols=1, figsize=(12, 30))
+            
+            for index, wav in enumerate(path_to_wavs):
+                wav_file_client = bronze_container_client.get_file_client(wav)
+
+                # Download the file content
+                download_result = wav_file_client.download_file()
+                downloaded_bytes = download_result.readall()
+                audio_buff = io.BytesIO(downloaded_bytes)
+
+                # let librosa read the audio buffer containing the content
+                # of the binary audio file
+                y, sr = librosa.load(audio_buff, sr=16000)
+
+                # audio recordings can have different length
+                print(f"shape of audio signals {y.shape}")
+                print(f"sampling rate of audio signals after interpolation: {sr}")
+
+                # top_db is set to 20 representing any signal below
+                # 20 decibels will be considered silence
+                y_trimmed, _ = librosa.effects.trim(y, top_db=20)
+
+            #     # append y to ys 
+                ys.append(y_trimmed)
+
+            # concatenate all audio signals into one final signal as 
+            # this is all anyway recorded in the voice of the same gender
+            final = np.concatenate(ys, axis=0)
+
+            table = pa.table({
+                "signals": pa.array(final), 
+                "subjectId": pa.array([subject_folder] * final.shape[0], type=pa.string()),
+                "rowId": pa.array(np.arange(final.shape[0]), type=pa.int32())
+            })
+            # print(f"shape of final signal: {final.shape}")
+            # # print(f"shape of signal: {y.shape}")
+            # # print(f"shape of trimmed signal: {y_trimmed.shape}")
+            # # print(f"sampling rate: {sr}")
+            # # librosa.display.waveshow(final, alpha=0.5)
+
+            # # plt.tight_layout()
+            # # plt.show()
+
+            return subject_folder, table
+        
+    # concurrently load .wav files and trim  each .wav files
+    # audio signal and combine into one signal for each subject 
+    with ThreadPoolExecutor(max_workers=5) as exe:
+        signals = list(exe.map(helper, subject_folders))
+
+    return func.HttpResponse(
+        f"This HTTP triggered function retrieved paths {signals} successfully to storage account {storage_account_name.value}",
+        status_code=200
+    )
+    
+        
+    # return signals
+
 @app.route(route="extract_signals")
 def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     response = requests.get("http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/")
