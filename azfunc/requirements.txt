@@ -36,6 +36,7 @@ packaging==25.0
 pandas==2.2.3
 pip==23.2.1
 pyarrow==21.0.0
+pyarrowfs-adlgen2==0.2.5
 pycparser==2.22
 PyJWT==2.10.1
 PySocks==1.7.1

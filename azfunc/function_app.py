@@ -22,12 +22,10 @@ import io
 import librosa
 import numpy as np
 import pyarrow as pa
+import pyarrow.parquet as pq
+import pyarrow.fs as pa_fs
+import pyarrowfs_adlgen2 as pa_adl
 
-
-# # this is strictly used only in development
-# # load env variables
-# env_dir = Path('../').resolve()
-# load_dotenv(os.path.join(env_dir, '.env'))
 
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
@@ -160,6 +158,19 @@ def load_signals(req: func.HttpRequest) -> func.HttpResponse:
 
     storage_account_name = secret_client.get_secret("StorageAccountName")
 
+    # Retrieve credentials from environment variables
+    # this is strictly used only in development
+    # load env variables
+    # env_dir = Path('../').resolve()
+    # load_dotenv(os.path.join(env_dir, '.env'))
+
+    # class Test:
+    #     def __init__(self, value):
+    #         self.value = value
+
+    # storage_account_name = Test(os.environ.get("STORAGE_ACCOUNT_NAME"))
+    # credential = os.environ.get("STORAGE_ACCOUNT_KEY")
+
     # create client with generated sas token
     datalake_service_client = DataLakeServiceClient(
         account_url=f"https://{storage_account_name.value}.dfs.core.windows.net", 
@@ -175,38 +186,41 @@ def load_signals(req: func.HttpRequest) -> func.HttpResponse:
     # an immediate folder in the container. This only really
     # gets the subject folders 
     subject_folders = [path.name for path in bronze_container_client.get_paths() if not "/" in path.name]
-    
-    ys = []
 
+    # return func.HttpResponse(
+    #     f"This HTTP triggered function retrieved paths {subject_folders} successfully to storage account {storage_account_name.value}",
+    #     status_code=200
+    # )
     def helper(subject_folder):
         
         # for folder in folders:
         try:
             # lists out the files containing the .wav files in
-            # a subjects folder
-            wavs_dir = os.path.join(subject_folder, "wav")
+            # a subjects folder. Note also that using double backslash
+            # is not accepted by azure and will raise `path does not exist`
+            # or `files can not exist on the root account level` that's
+            # why we replace it always with forward slashes
+            wavs_dir = os.path.join(subject_folder, "wav").replace("\\", "/")
             path_to_wavs = [
                 path.name 
                 for path in bronze_container_client.get_paths(path=wavs_dir)
             ]
+            # print(f"path to wavs{path_to_wavs}")
         
-        except ResourceNotFoundError:
+        except (ResourceNotFoundError, FileNotFoundError):
             # this is if a .wav file is not used as a directory so 
             # try flac 
-            wavs_dir = os.path.join(subject_folder, "flac")
+            wavs_dir = os.path.join(subject_folder, "flac").replace("\\", "/")
             path_to_wavs = [
                 path.name 
                 for path in bronze_container_client.get_paths(path=wavs_dir)
             ]
+            # print(f"path to wavs{path_to_wavs}")
 
         finally:
             # create storage for list of signals to all be 
             # concatenated later
-            
-
-            # create figure, and axis
-            # fig, axes = plt.subplots(nrows=len(path_to_wavs), ncols=1, figsize=(12, 30))
-            
+            ys = []
             for index, wav in enumerate(path_to_wavs):
                 wav_file_client = bronze_container_client.get_file_client(wav)
 
@@ -215,7 +229,7 @@ def load_signals(req: func.HttpRequest) -> func.HttpResponse:
                 downloaded_bytes = download_result.readall()
                 audio_buff = io.BytesIO(downloaded_bytes)
 
-                # let librosa read the audio buffer containing the content
+                # let librosa read the audio buffer containing t+he content
                 # of the binary audio file
                 y, sr = librosa.load(audio_buff, sr=16000)
 
@@ -234,21 +248,28 @@ def load_signals(req: func.HttpRequest) -> func.HttpResponse:
             # this is all anyway recorded in the voice of the same gender
             final = np.concatenate(ys, axis=0)
 
+            # create pyarrow table so we can write this table as
+            # parquet file format later
             table = pa.table({
                 "signals": pa.array(final), 
                 "subjectId": pa.array([subject_folder] * final.shape[0], type=pa.string()),
                 "rowId": pa.array(np.arange(final.shape[0]), type=pa.int32())
             })
-            # print(f"shape of final signal: {final.shape}")
-            # # print(f"shape of signal: {y.shape}")
-            # # print(f"shape of trimmed signal: {y_trimmed.shape}")
-            # # print(f"sampling rate: {sr}")
-            # # librosa.display.waveshow(final, alpha=0.5)
 
-            # # plt.tight_layout()
-            # # plt.show()
+            # write the pyarrow table to azure data lake using
+            # pyarrow azure file system using the credential we
+            # retrieved which uses the function apps system assigned 
+            # managed identity
+            SILVER_FOLDER_NAME = f"{storage_account_name.value}-silver"
+            SUB_FOLDER_NAME = "stage-01"
+            FILE_NAME = f"{subject_folder}_signals.parquet"
 
-            return subject_folder, table
+            SILVER_DATA_PATH = os.path.join(SILVER_FOLDER_NAME, SUB_FOLDER_NAME, FILE_NAME).replace("\\", "/")
+            handler = pa_adl.AccountHandler.from_account_name(storage_account_name.value, credential=credential)
+            fs = pa.fs.PyFileSystem(handler)
+            pq.write_table(table, SILVER_DATA_PATH, filesystem=fs)
+
+            return subject_folder, final
         
     # concurrently load .wav files and trim  each .wav files
     # audio signal and combine into one signal for each subject 
@@ -256,7 +277,7 @@ def load_signals(req: func.HttpRequest) -> func.HttpResponse:
         signals = list(exe.map(helper, subject_folders))
 
     return func.HttpResponse(
-        f"This HTTP triggered function retrieved paths {signals} successfully to storage account {storage_account_name.value}",
+        f"This HTTP triggered function retrieved paths {subject_folders} successfully to storage account {storage_account_name.value}",
         status_code=200
     )
     
@@ -309,40 +330,6 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
     # load secret keys from key vault
     test = secret_client.get_secret('test')
     storage_account_name = secret_client.get_secret('StorageAccountName')
-    # resource_group_name = secret_client.get_secret('resource-group-name')
-    
-    # # Retrieve credentials from environment variables
-    # storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
-    # storage_account_key = os.environ.get("STORAGE_ACCOUNT_KEY")
-
-    # account_sas_kwargs = {
-    #     "account_name": storage_account_name,
-    #     "account_key": storage_account_key,
-    #     "services": Services(blob=True, queue=True, fileshare=True),
-    #     "resource_types": ResourceTypes(
-    #         service=True, 
-    #         container=True, 
-    #         object=True
-    #     ), 
-    #     "permission": AccountSasPermissions(
-    #         read=True, 
-    #         write=True,
-    #         delete=True,
-    #         list=True,
-    #         add=True,
-    #         create=True,
-    #         update=True,
-    #         process=True
-    #     ), 
-    #     "start": datetime.utcnow(),  
-    #     "expiry": datetime.utcnow() + timedelta(days=1) 
-    # } 
-    
-    # # generated sas token is at the level of the storage account, 
-    # # permitting services like blobs, files, queues, and tables 
-    # # to be read, listed, retrieved, updated, deleted etc. 
-    # # where allowed resource types are service, container 
-    # sas_token = generate_account_sas(**account_sas_kwargs)
 
     # begin writing files in blob storage
     try:
