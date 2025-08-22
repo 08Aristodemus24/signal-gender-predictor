@@ -2240,9 +2240,15 @@ fs.azure.account.oauth2.client.id.mydatalake.dfs.core.windows.net: {{secrets/mys
 
 Is there a better/proper way to do it ?
 
-* reason why you get `Make sure the value of Authorization header is formed correctly including the signature` when accessing a newly created azure data lake storage container's files is because in RBAC we haven't added us the user ourselves to list the files in a container. We must add storage blob data contributor and storage queue data contributor as roles to our user account  
+* reason why you get `Make sure the value of Authorization header is formed correctly including the signature` when accessing a newly created azure data lake storage container's files is because in RBAC we haven't added us the user ourselves to list the files in a container. We must add storage blob data contributor and storage queue data contributor as roles to our user account.
 
+* another reason for why `Make sure the value of Authorization header is formed correctly including the signature` is occuring especially when using storage account key credentials in `DataLakeServiceClient` or `BlobServiceClient` to access the storage accounts containers/file system or blobs/files
 
+* to download files and entire directories in our azure data lake storage we can use `az storage fs directory download --account-name <storage account name> -f <file system or container name> -s <directory or file inside in the file system or container to download> -d <local abs or rel dir to where files will be saved> --recursive`
+e.g. 
+```
+(tech-interview) C:\Users\LARRY\Documents\Scripts\data-engineering-path\signal-gender-predictor\include\data\silver>az storage fs directory download --account-name sgppipelinesa -f sgppipelinesa-silver -s stage-01/ -d . --recursive
+```
 
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
