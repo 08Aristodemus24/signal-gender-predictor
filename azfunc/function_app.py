@@ -60,8 +60,8 @@ def batch_signal_files_lookup(data: list, batch_size: int):
         # yield the json object
         yield curr_batch_signal_files_lookup_json
 
-@app.route(route="http_trigger")
-def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
+@app.route(route="extract_signals_test")
+def extract_signals_test(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
     # we need to set the environment variables in our function 
@@ -106,7 +106,57 @@ def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
             "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1337ad-20170321-ajg.tgz",
             "RelativeURL": "1337ad-20170321-ajg.tgz",
             "FileName": "1337ad-20170321-ajg.tgz"
-        }
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1snoke-20120412-hge.tgz",
+            "RelativeURL": "1snoke-20120412-hge.tgz",
+            "FileName": "1snoke-20120412-hge.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/23yipikaye-20100807-ujm.tgz",
+            "RelativeURL": "23yipikaye-20100807-ujm.tgz",
+            "FileName": "23yipikaye-20100807-ujm.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1337ad-20170321-tkg.tgz",
+            "RelativeURL": "1337ad-20170321-tkg.tgz",
+            "FileName": "1337ad-20170321-tkg.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/Aaron-20080318-kdl.tgz",
+            "RelativeURL": "Aaron-20080318-kdl.tgz",
+            "FileName": "Aaron-20080318-kdl.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/Anniepoo-20140308-bft.tgz",
+            "RelativeURL": "Anniepoo-20140308-bft.tgz",
+            "FileName": "Anniepoo-20140308-bft.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/Anniepoo-20140308-cqj.tgz",
+            "RelativeURL": "Anniepoo-20140308-cqj.tgz",
+            "FileName": "Anniepoo-20140308-cqj.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/Anniepoo-20140308-fcp.tgz",
+            "RelativeURL": "Anniepoo-20140308-fcp.tgz",
+            "FileName": "Anniepoo-20140308-fcp.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/Anniepoo-20140308-hns.tgz",
+            "RelativeURL": "Anniepoo-20140308-hns.tgz",
+            "FileName": "Anniepoo-20140308-hns.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/Anniepoo-20140308-nky.tgz",
+            "RelativeURL": "Anniepoo-20140308-nky.tgz",
+            "FileName": "Anniepoo-20140308-nky.tgz"
+        },
+        {
+            "BaseURL": "http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/Coren-20141121-pxp.tgz",
+            "RelativeURL": "Coren-20141121-pxp.tgz",
+            "FileName": "Coren-20141121-pxp.tgz"
+        },
     ]
     test_json = json.dumps(test, indent=4).encode("utf-8")
 
