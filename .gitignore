@@ -8,5 +8,4 @@ infra/*.tfstate
 infra/*.backup
 infra/.terraform/
 
-/figures & images/
-!/figures & images/initial architecture.jpg
+/figures & images/don't commit/
