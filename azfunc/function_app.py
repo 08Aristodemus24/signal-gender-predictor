@@ -195,8 +195,8 @@ def extract_signals_test(req: func.HttpRequest) -> func.HttpResponse:
             status_code=200
         )
 
-@app.route(route="load_signals")
-def load_signals(req: func.HttpRequest) -> func.HttpResponse:
+@app.route(route="ingest_signals")
+def ingest_signals(req: func.HttpRequest) -> func.HttpResponse:
     # load managed identity
     credential = DefaultAzureCredential()
 
@@ -324,7 +324,7 @@ def load_signals(req: func.HttpRequest) -> func.HttpResponse:
     # concurrently load .wav files and trim  each .wav files
     # audio signal and combine into one signal for each subject 
     with ThreadPoolExecutor(max_workers=5) as exe:
-        signals = list(exe.map(helper, subject_folders))
+        exe.map(helper, subject_folders)
 
     return func.HttpResponse(
         f"This HTTP triggered function retrieved paths {subject_folders} successfully to storage account {storage_account_name.value}",

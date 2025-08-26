@@ -2250,6 +2250,8 @@ e.g.
 (tech-interview) C:\Users\LARRY\Documents\Scripts\data-engineering-path\signal-gender-predictor\include\data\silver>az storage fs directory download --account-name sgppipelinesa -f sgppipelinesa-silver -s stage-01/ -d . --recursive
 ```
 
+* `azure.core.exceptions.SerializationError: Unable to build a model: Unable to deserialize to object:` type error encountered when using `adf_client.linked_services.create_or_update` typically indicates an issue with the function app key provided in the `AzureFunctionLinkedService()` class where if the key is not passed in `SecureString()` from `azure.mgmt.datafactory.models` e.g. `SecureString(value="<some secret key of a function apps specificfunction>")`
+
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
 * end to end azure DE tutorial: https://www.youtube.com/watch?v=lyp8rlpJc3k&list=PLCBT00GZN_SAzwTS-SuLRM547_4MUHPuM&index=45&t=5222s
