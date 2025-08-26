@@ -1,7 +1,12 @@
 # A project that takes raw audio signals of males and females and predicting the genders of these audio files. This is an end to end DE/ML project that will take these signals from raw to usable features that ML models will train on. 
 
-## Dataset
+## Pipeline Architecture:
+![alt text](./figures%20&%20images/initial%20architecture.jpg)
 
+## Cloud Infrastructure:
+![alt text](./figures%20&%20images/initial%20architecture.jpg)
+
+## Dataset
 The raw data consists of, as of 30th August 2018, 95,481 audio samples of male and female speakers speaking in short English sentences. The raw data is compressed using `.tgz` files. Each `.tgz` compressed file contains the following directory structure and files:
 
 - `<file>/`

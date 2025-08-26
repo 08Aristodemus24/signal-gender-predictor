@@ -16,7 +16,10 @@ from azure.mgmt.datafactory.models import (
     HttpLinkedService,
     ParameterSpecification,
     Expression,
-    ParameterType
+    ParameterType,
+
+    HttpDataset,
+    AzureBlobFSDataset,
 )
 
 from datetime import datetime, timedelta

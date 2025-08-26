@@ -2252,6 +2252,10 @@ e.g.
 
 * `azure.core.exceptions.SerializationError: Unable to build a model: Unable to deserialize to object:` type error encountered when using `adf_client.linked_services.create_or_update` typically indicates an issue with the function app key provided in the `AzureFunctionLinkedService()` class where if the key is not passed in `SecureString()` from `azure.mgmt.datafactory.models` e.g. `SecureString(value="<some secret key of a function apps specificfunction>")`
 
+* if you accidentally commit secrets what you should do is remove the secret from the file/s and then run `git commit --amend --all`
+
+
+
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
 * end to end azure DE tutorial: https://www.youtube.com/watch?v=lyp8rlpJc3k&list=PLCBT00GZN_SAzwTS-SuLRM547_4MUHPuM&index=45&t=5222s
@@ -2274,3 +2278,5 @@ https://prashanth-kumar-ms.medium.com/azure-managed-identity-integration-with-st
 https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegation-sas#user-delegation-sas-support-for-directory-scoped-access 
 
 * azure databricks cluster setup: https://medium.com/@phaneendraganji3/how-i-solved-the-vm-sku-not-available-in-your-region-error-while-creating-a-databricks-compute-fd8910247534
+
+* creating adf, adf activities, adf linked services, adf datasets: https://learn.microsoft.com/en-us/azure/data-factory/quickstart-create-data-factory-python#create-a-linked-service
