@@ -62,38 +62,39 @@ def batch_signal_files_lookup(data: list, batch_size: int):
 
 @app.route(route="extract_signals_test")
 def extract_signals_test(req: func.HttpRequest) -> func.HttpResponse:
+    
     logging.info('Python HTTP trigger function processed a request.')
 
-    # we need to set the environment variables in our function 
-    # app so that when DefaultAzureCredentials() runs it loads 
-    # the env variables in our azure function app service 
-    # as credentials. This must include the name of the secret
-    # we want to access set to a value @Microsoft.KeyVault(SecretUri=<copied-value>)
-    # where `<copied value>` here is actually the secred identifier we
-    # copied when we created our secret key and value pair azure key
-    # vault. If this is not set even if azure key vault hgas an access
-    # policy that grants the azure function to access it it will result
-    # in a internal server 500 error
-    credential = DefaultAzureCredential()
+    # # we need to set the environment variables in our function 
+    # # app so that when DefaultAzureCredentials() runs it loads 
+    # # the env variables in our azure function app service 
+    # # as credentials. This must include the name of the secret
+    # # we want to access set to a value @Microsoft.KeyVault(SecretUri=<copied-value>)
+    # # where `<copied value>` here is actually the secred identifier we
+    # # copied when we created our secret key and value pair azure key
+    # # vault. If this is not set even if azure key vault hgas an access
+    # # policy that grants the azure function to access it it will result
+    # # in a internal server 500 error
+    # credential = DefaultAzureCredential()
 
-    # 
-    secret_client = SecretClient(
-        vault_url="https://sgppipelinekv.vault.azure.net",
-        credential=credential
-    )
+    # # 
+    # secret_client = SecretClient(
+    #     vault_url="https://sgppipelinekv.vault.azure.net",
+    #     credential=credential
+    # )
 
-    test = secret_client.get_secret('test')
-    storage_account_name = secret_client.get_secret("StorageAccountName")
+    # test = secret_client.get_secret('test')
+    # storage_account_name = secret_client.get_secret("StorageAccountName")
 
-    # create client with generated sas token
-    datalake_service_client = DataLakeServiceClient(
-        account_url=f"https://{storage_account_name.value}.dfs.core.windows.net", 
-        credential=credential
-    )
+    # # create client with generated sas token
+    # datalake_service_client = DataLakeServiceClient(
+    #     account_url=f"https://{storage_account_name.value}.dfs.core.windows.net", 
+    #     credential=credential
+    # )
 
-    # retrieves file system client to retrieve datalake client
-    # writes json file to the selected container. The 
-    misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name.value}-miscellaneous")
+    # # retrieves file system client to retrieve datalake client
+    # # writes json file to the selected container. The 
+    # misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name.value}-miscellaneous")
 
     # create test dicitonary to convert to json object
     test = [
@@ -158,16 +159,8 @@ def extract_signals_test(req: func.HttpRequest) -> func.HttpResponse:
             "FileName": "Coren-20141121-pxp.tgz"
         },
     ]
-    test_json = json.dumps(test, indent=4).encode("utf-8")
-
-    # create file in blob container and upload the json object
-    test_client = misc_container_client.get_file_client("signal_files_lookup_test.json")
-    test_client.upload_data(test_json, overwrite=True)
-
-    # # listing containers/file system, directories, and paths/blobs
-    # for fs in datalake_service_client.list_file_systems():
-    #     print(f"file system name: {fs.name}")
-
+    test_json = json.dumps(test, indent=4)
+    # .encode("utf-8")
 
     # container = datalake_service_client.get_file_system_client("sgppipelinesa-miscellaneous")
     # dir = container.get_directory_client("lookup_files")
@@ -176,24 +169,11 @@ def extract_signals_test(req: func.HttpRequest) -> func.HttpResponse:
     # for file in files:
     #     print(file.name)
 
-    
-    # if there is a passed parameter get its value
-    name = req.params.get('name')
-    if not name:
-        try:
-            req_body = req.get_json()
-        except ValueError:
-            pass
-        else:
-            name = req_body.get('name')
-
-    if name:
-        return func.HttpResponse(f"Hello {name}, your HTTP triggered function wrote test.json to storage container {storage_account_name.value}.")
-    else:
-        return func.HttpResponse(
-            f"Hello, your HTTP triggered function wrote test.json to storage container {storage_account_name.value}.",
-            status_code=200
-        )
+    return func.HttpResponse(
+        test_json,
+        mimetype="application/json",
+        status_code=200
+    )
 
 @app.route(route="ingest_signals")
 def ingest_signals(req: func.HttpRequest) -> func.HttpResponse:
@@ -344,66 +324,74 @@ def extract_signals(req: func.HttpRequest) -> func.HttpResponse:
 
     # exclude all hrefs without .tgz extension
     # http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/1028-20100710-hne.tgz
-    batched_signal_files_lookup_jsons = batch_signal_files_lookup(download_links, batch_size=5000)
+    batched_signal_files_lookup = [
+        {
+            "BaseURL": download_link,
+            "RelativeURL": download_link.split("/")[-1],
+            "FileName": download_link.split("/")[-1],
+        } for download_link in download_links
+    ] 
+    batched_signal_files_lookup_jsons = json.dumps(batched_signal_files_lookup, indent=4)
 
-    # get number of downloads
-    n_links = len(download_links)
+    # # get number of downloads
+    # n_links = len(download_links)
     
-    # check if a parameter has been entered in the URL
-    RANGE = req.params.get('range')
-    if not RANGE:
-        try:
-            req_body = req.get_json()
-        except ValueError:
-            pass
-        else:
-            RANGE = req_body.get('range')
-    RANGE = n_links if not RANGE else int(RANGE)
+    # # check if a parameter has been entered in the URL
+    # RANGE = req.params.get("range")
+    # if not RANGE:
+    #     try:
+    #         req_body = req.get_json()
+    #     except ValueError:
+    #         pass
+    #     else:
+    #         RANGE = req_body.get("range")
+    # RANGE = n_links if not RANGE else int(RANGE)
 
-    # once deployed to azure function app environment
-    # DefaultAzureCredential() retrieves the azure functions
-    # managed identity we created when we enabled system 
-    # assigned managed identity which assigns an object id
-    # to our azure function app and in which we permitted this
-    # object id in our azure key vault and azure blob storage 
-    # to have access to these resources. This object id is what
-    # we use to access these resources
-    credential = DefaultAzureCredential()
+    # # once deployed to azure function app environment
+    # # DefaultAzureCredential() retrieves the azure functions
+    # # managed identity we created when we enabled system 
+    # # assigned managed identity which assigns an object id
+    # # to our azure function app and in which we permitted this
+    # # object id in our azure key vault and azure blob storage 
+    # # to have access to these resources. This object id is what
+    # # we use to access these resources
+    # credential = DefaultAzureCredential()
 
-    # pass this as credential to secret client as well
-    # as our blob storage client later
-    secret_client = SecretClient(
-        vault_url="https://sgppipelinekv.vault.azure.net",
-        credential=credential
-    )
+    # # pass this as credential to secret client as well
+    # # as our blob storage client later
+    # secret_client = SecretClient(
+    #     vault_url="https://sgppipelinekv.vault.azure.net",
+    #     credential=credential
+    # )
 
-    # load secret keys from key vault
-    test = secret_client.get_secret('test')
-    storage_account_name = secret_client.get_secret('StorageAccountName')
+    # # load secret keys from key vault
+    # test = secret_client.get_secret('test')
+    # storage_account_name = secret_client.get_secret('StorageAccountName')
 
-    # begin writing files in blob storage
-    try:
-        # create client with generated sas token
-        datalake_service_client = DataLakeServiceClient(
-            account_url=f"https://{storage_account_name.value}.dfs.core.windows.net", 
-            credential=credential
-        )
+    # # begin writing files in blob storage
+    # try:
+    #     # create client with generated sas token
+    #     datalake_service_client = DataLakeServiceClient(
+    #         account_url=f"https://{storage_account_name.value}.dfs.core.windows.net", 
+    #         credential=credential
+    #     )
 
-        # retrieves file system client to retrieve datalake client
-        # writes json file to the selected container. The 
-        misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name.value}-miscellaneous")
+    #     # retrieves file system client to retrieve datalake client
+    #     # writes json file to the selected container. The 
+    #     misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name.value}-miscellaneous")
         
-        # using newly created blob client we upload the json 
-        # object as a file. There are 6321 items of these urls
-        # in total
-        for i, batch in enumerate(batched_signal_files_lookup_jsons):
-            signal_files_lookup_client = misc_container_client.get_file_client(f"signal_files_lookup_{i + 1}.json")
-            signal_files_lookup_client.upload_data(batch, overwrite=True)
+    #     # using newly created blob client we upload the json 
+    #     # object as a file. There are 6321 items of these urls
+    #     # in total
+    #     for i, batch in enumerate(batched_signal_files_lookup_jsons):
+    #         signal_files_lookup_client = misc_container_client.get_file_client(f"signal_files_lookup_{i + 1}.json")
+    #         signal_files_lookup_client.upload_data(batch, overwrite=True)
 
-    except Exception as e:
-        print(f"Error operating on blobs: {e}")
+    # except Exception as e:
+    #     print(f"Error operating on blobs: {e}")
 
     return func.HttpResponse(
-        f"This HTTP triggered function extracted {n_links} audio signals successfully to storage account {storage_account_name.value}",
+        batched_signal_files_lookup_jsons,
+        mimetype="application/json",
         status_code=200
     )

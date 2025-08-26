@@ -6,50 +6,25 @@ from azure.mgmt.datafactory.models import (
     CopyActivity,
     
     LinkedServiceResource,
-    
     AzureFunctionLinkedService,
-    
     AzureKeyVaultLinkedService,
     SecureString,
-
     AzureBlobFSLinkedService,
     HttpLinkedService,
     ParameterSpecification,
-    Expression,
     ParameterType,
 
     HttpDataset,
     AzureBlobFSDataset,
+    HttpSource,
+    FileSystemSink
 )
 
-from datetime import datetime, timedelta
-from argparse import ArgumentParser
-from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from pathlib import Path
-from urllib.parse import urlencode
 
 import os
 
-
-def print_item(group):
-    """Print an Azure object instance."""
-    print("\tName: {}".format(group.name))
-    print("\tId: {}".format(group.id))
-    if hasattr(group, 'location'):
-        print("\tLocation: {}".format(group.location))
-    if hasattr(group, 'tags'):
-        print("\tTags: {}".format(group.tags))
-    if hasattr(group, 'properties'):
-        print_properties(group.properties)
-
-
-def print_properties(props):
-    """Print a ResourceGroup properties instance."""
-    if props and hasattr(props, 'provisioning_state') and props.provisioning_state:
-        print("\tProperties:")
-        print("\t\tProvisioning State: {}".format(props.provisioning_state))
-    print("\n\n")
 
 
 if __name__ == "__main__":

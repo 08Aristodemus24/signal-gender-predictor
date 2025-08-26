@@ -5,7 +5,6 @@
 
 ## Cloud Infrastructure:
 ![alt text](./figures%20&%20images/initial%20architecture.jpg)
-![alt text](<figures & images/initial architecture.jpg>)
 
 ## Dataset
 The raw data consists of, as of 30th August 2018, 95,481 audio samples of male and female speakers speaking in short English sentences. The raw data is compressed using `.tgz` files. Each `.tgz` compressed file contains the following directory structure and files:
