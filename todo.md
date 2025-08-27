@@ -8,8 +8,8 @@
 * if I can upload a file to azure data lake storage via function locally I can upload the file to azure data lake storage container using secret keys in azure key vault
 * integrate azure key vault with azure function so that if the task of uploading a file to azure blob storage containers does need credentials then I don't need to access them locally.
 
-* uploading a file from azure function can't be done but can be done using azure data factory copy task which copies a http resource directly to azure data lake storage or azure blob storage
-* automate this whole process of setting up adf copying from http to "sink" (ADL2) using python code if possible (reference here: https://learn.microsoft.com/en-us/azure/data-factory/quickstart-create-data-factory-python), because the steps are the ff:
+* <s>uploading a file from azure function can't be done but can be done using azure data factory copy task which copies a http resource directly to azure data lake storage or azure blob storage</s>
+* <s>automate this whole process of setting up adf copying from http to "sink" (ADL2) using python code if possible (reference here: https://learn.microsoft.com/en-us/azure/data-factory/quickstart-create-data-factory-python), because the steps are the ff:</s>
 - we need all relative urls and base urls of the http resources
 - we construct a dictionary containing these relative urls and base urls of the http resources and write it in a json file and upload it directly to a miscellaneous container in our azure data lake storage account. We can initially do this locally but we will have to at some point do this inside the azure function instead without having to rely on local environmetn secrets & variables. See this post here how to setup azure functions with azure key vault: https://medium.com/@dssc2022yt/accessing-azure-key-vault-secrets-with-azure-functions-2e651980f292
 - once the dictionary has been uploaded as a .json file we will define our lookup activity/task in azure data factory, and set its source dataset to be the json file we uploaded in our azure blob storage. But to do this we will have to create a linked service
@@ -60,7 +60,7 @@ maybe if gantong array format with corresponding spark dataframes inside we can 
 * need to
 https://www.databricks.com/blog/2021/10/12/native-support-of-session-window-in-spark-structured-streaming.html
 
-
+* work around for processing more than 5000 records using the lookup activity in azure. Because I have a .json file with about 6321 records not a SQL table and I want to be able to process these rows all at once without using multiple lookup activities?
 
 # Setting up azure workspace
 * create an azure account at 
