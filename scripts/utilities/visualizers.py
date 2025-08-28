@@ -3,6 +3,15 @@ import seaborn as sb
 import os
 import pandas as pd
 import numpy as np
+import librosa
+
+def view_signal_feature(x_signal, feature_name):
+    figure = plt.figure(figsize=(15, 10))
+    axis = figure.add_subplot()
+
+    librosa.display.waveshow(x_signal, color="purple", ax=axis, alpha=0.75)
+    axis.set_title(feature_name)
+    plt.show()
 
 def view_label_freq(label_freq, img_title: str="untitled", save_img: bool=True, labels: list | pd.Series | np.ndarray=["DER", "NDG", "OFF", "HOM"], horizontal: bool=True, style: str='dark'):
     """

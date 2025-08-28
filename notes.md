@@ -2254,7 +2254,7 @@ e.g.
 
 * if you accidentally commit secrets what you should do is remove the secret from the file/s and then run `git commit --amend --all`
 
-
+* the reason why `pagefile.sys` is taking up too much space when you run a notebook that loads all the signal files into a single dataframe is because the variable that holds this one giant dataframe takes up too much space in memory. `pagefile.sys` is a system file in Windows that acts as a virtual memory extension for your computer's RAM (Random Access Memory)
 
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
