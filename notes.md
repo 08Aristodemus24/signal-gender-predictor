@@ -2280,3 +2280,5 @@ https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegatio
 * azure databricks cluster setup: https://medium.com/@phaneendraganji3/how-i-solved-the-vm-sku-not-available-in-your-region-error-while-creating-a-databricks-compute-fd8910247534
 
 * creating adf, adf activities, adf linked services, adf datasets: https://learn.microsoft.com/en-us/azure/data-factory/quickstart-create-data-factory-python#create-a-linked-service
+
+* using apache spark (pyspark) to generate synthetic features of minority class in imbalanced datasets: https://medium.com/data-and-beyond/exploring-pyspark-ml-for-machine-learning-handling-class-imbalances-part-2-2-f9113f6b40ba
