@@ -9,6 +9,7 @@ from pathlib import Path
 from airflow import DAG, settings
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
+from airflow.providers.papermill.operators.papermill import PapermillOperator
 from airflow.models import Variable, Connection 
 from airflow.configuration import conf
 
@@ -41,10 +42,26 @@ with DAG(
     catchup=False
 ) as dag:
     
-    # ../include/data/1028-20100710-hne.tgz
-    extract_signals = BashOperator(
-        task_id="extract_signals",
-        bash_command=f"python {AIRFLOW_HOME}/operators/extract_signals.py --range 1 --data-dir {BASE_DIR}/include/data/"
-    )   
+    # #  saves the compressed files in ../include/data/bronze1028-20100710-hne.tgz
+    # download_signals = BashOperator(
+    #     task_id="download_signals",
+    #     bash_command=f"python {AIRFLOW_HOME}/operators/download_signals.py -d {BASE_DIR}/include/data/bronze"
+    # )
 
-    extract_signals
+    # extract_signals = BashOperator(
+    #     task_id="extract_signals",
+    #     bash_command=f"python {AIRFLOW_HOME}/operators/extract_signals.py -d {BASE_DIR}/include/data/bronze"
+    # ) 
+
+    ingest_signals = PapermillOperator(
+        task_id="ingest_signals",
+        input_nb=f"{BASE_DIR}/include/data/bronze"
+        # output_nb="/tmp/out-{{ logical_date }}.ipynb",
+        # parameters={"msgs": "Ran from Airflow at {{ logical_date }}!"},
+    )
+
+    # ingest_labels = PapermillOperator(
+
+    # )
+
+    ingest_signals

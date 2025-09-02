@@ -4,6 +4,8 @@
 * Azure data lake - for storing data at each transformation step
 * pinecone (or some kind of cloud vector database) - for storing the final calculated feature vectors in some kind of cloud feature vector storage
 * Terraform - for automating setup of azure services/cloud infrastructure
+* try use of free services for 12 months provided by MS azure, includes cosmos db, azure blob/data lake storage gen2, azure ml studio, etc.
+* try use of feast for storing feature vectors for machine learning workflows: https://feast.dev/, https://www.hopsworks.ai/, 
 
 # Insights:
 * to set env variable in windows via CMd use `SETX <name of user env var> "<some value>"`
