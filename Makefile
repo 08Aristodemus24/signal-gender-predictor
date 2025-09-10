@@ -13,7 +13,7 @@ do-sleep:
 # that will setup our airflow connections in the container from our 
 # local machine  
 setup-conn:
-	docker exec signal-gender-predictor-pipeline-airflow-apiserver-1 python /opt/airflow/include/scripts/setup_conn.py
+	docker exec signal-gender-predictor-airflow-apiserver-1 python /opt/airflow/include/scripts/setup_conn.py
 
 up: start-containers do-sleep
 
@@ -21,7 +21,7 @@ down:
 	docker compose down
 
 sh:
-	docker exec -it signal-gender-predictor-pipeline-airflow-apiserver-1 bash
+	docker exec -it signal-gender-predictor-airflow-apiserver-1 bash
 
 restart: down up
 

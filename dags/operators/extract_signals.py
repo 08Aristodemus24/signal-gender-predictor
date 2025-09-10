@@ -1,67 +1,80 @@
-from selenium import webdriver
+from azure.identity import ClientSecretCredential
+from azure.mgmt.datafactory import DataFactoryManagementClient
 
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from webdriver_manager.chrome import ChromeDriverManager
+from dotenv import load_dotenv
+from pathlib import Path
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
-from selenium.webdriver.support import expected_conditions as EC
-
-import time
 import os
+import time
 
-from utilities.loaders import download_dataset
+def check_pipeline_status(adf_client: DataFactoryManagementClient, pline_kwargs: dict):
+    # --- Monitor Pipeline Status ---
+    while True:
+        pipeline_run = adf_client.pipeline_runs.get(**pline_kwargs)
 
-from argparse import ArgumentParser
-from concurrent.futures import ThreadPoolExecutor
+        # check status of pipeline
+        status = pipeline_run.status
+        print(f"Current pipeline status: {status}")
 
-# python ./operators/extract_signals.py --range 1 --data-dir ../include/data/
+        if status in ["Succeeded", "Failed", "Canceled"]:
+            print(f"Pipeline run finished with status: {status}")
+            break
+        
+        time.sleep(30) # Wait for 30 seconds before checking again
+
+    # --- Further Actions based on Status (Example) ---
+    if status == "Failed":
+        raise Exception("Pipeline `sgppipeline_extract` failed.")
+        # You can query activity runs for more details here
+        # query_response = adf_client.activity_runs.query_by_pipeline_run(...)
+        # print_activity_run_details(query_response.value[0])
+
+
 if __name__ == "__main__":
-    print(f"current directory: {os.getcwd()}")
-    
-    # get year range and state from user input
-    parser = ArgumentParser()
-    parser.add_argument("--range", type=int, default=-1, help="represents the end range of what files to download")
-    parser.add_argument("--data-dir", type=str, default="./include/data", help="represents the directory which to download the files")
-    args = parser.parse_args()
-    
-    RANGE = args.range
-    DATA_DIR = args.data_dir
+    # # Retrieve credentials from environment variables
+    # # this is strictly used only in development
+    # # load env variables
+    # env_dir = Path('../../').resolve()
+    # load_dotenv(os.path.join(env_dir, '.env'))
 
-    chrome_options = ChromeOptions()
-    chrome_options.add_experimental_option('detach', True)
-    
-    # arguments
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    
-    service = ChromeService(executable_path=ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.get('http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/')
+    # Retrieve credentials from environment variables
+    tenant_id = os.environ.get("AZURE_TENANT_ID")
+    client_id = os.environ.get("AZURE_CLIENT_ID")
+    client_secret = os.environ.get("AZURE_CLIENT_SECRET")
+    sub_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+    res_grp_name = os.environ.get("RESOURCE_GROUP_NAME")
+    # print(f"running subpipeline with {sub_id}")
+    print(res_grp_name)
 
-    # wait 5 seconds for page load
-    time.sleep(5)
+    # location and data factory name
+    location = "eastus"
+    adf_name = "sgppipelineadffree"
 
-    
-    driver.execute_script("window.scrollBy(0, document.body.scrollHeight)") 
+    # Specify your Active Directory client ID, client secret, and tenant ID
+    credential = ClientSecretCredential(
+        client_id=client_id, 
+        client_secret=client_secret, 
+        tenant_id=tenant_id
+    )
 
-    
-    anchor_tags = driver.find_elements(By.TAG_NAME, "a")
+    adf_client = DataFactoryManagementClient(credential, sub_id)
 
-    def helper(a_tag):
-        # this will extract the href of all acnhor tags 
-        link = a_tag.get_attribute('href')
-        return link
+    # run the azrue data factory pipeline
+    run_response = adf_client.pipelines.create_run(
+        resource_group_name=res_grp_name,
+        factory_name=adf_name,
+        pipeline_name="sgppipeline_extractor"
+    )
+    run_id = run_response.run_id
 
-    # concurrently read and load all .json files
-    with ThreadPoolExecutor() as exe:
-        links = list(exe.map(helper, anchor_tags))
+    print(f"pipeline run with id: {run_id}")
 
-    # exclude all hrefs without .tgz extension
-    download_links = list(filter(lambda link: link.endswith('.tgz'), links))
+    # check the status fo the pipeline and if it is finished
+    # only then can the airflow pipeline proceed. If it fails
+    # then raise an exception
+    check_pipeline_status(adf_client, pline_kwargs={
+        "resource_group_name": res_grp_name,
+        "factory_name": adf_name,
+        "run_id": run_id,
+    })
 
-    # download the raw .tgz files to azure data lake storages
-    download_dataset(download_links[:RANGE], data_dir=DATA_DIR)

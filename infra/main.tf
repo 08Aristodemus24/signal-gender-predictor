@@ -101,24 +101,24 @@ resource "azurerm_storage_container" "containers" {
   # storage_account_id = azurerm_storage_account.adls.id  
 }
 
-# azure databricks workspace for transforming data at each staging layer
-resource "azurerm_databricks_workspace" "dbw" {
-  name                = "${var.project_name}dbws"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
+# # azure databricks workspace for transforming data at each staging layer
+# resource "azurerm_databricks_workspace" "dbw" {
+#   name                = "${var.project_name}dbws"
+#   resource_group_name = azurerm_resource_group.rg.name
+#   location            = azurerm_resource_group.rg.location
 
-  # not standard because we need the unity catalog access connector
-  sku = "premium"
+#   # not standard because we need the unity catalog access connector
+#   sku = "premium"
 
-  tags = {
-    Environment = "development"
-  }
-}
+#   tags = {
+#     Environment = "development"
+#   }
+# }
 
-# azure data factory for orchestrating the whole workflow from extraction
-# transformation and to loading
-resource "azurerm_data_factory" "adf" {
-  name                = "${var.project_name}adf"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-}
+# # azure data factory for orchestrating the whole workflow from extraction
+# # transformation and to loading
+# resource "azurerm_data_factory" "adf" {
+#   name                = "${var.project_name}adf"
+#   location            = azurerm_resource_group.rg.location
+#   resource_group_name = azurerm_resource_group.rg.name
+# }

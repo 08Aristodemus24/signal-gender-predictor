@@ -4,6 +4,16 @@
 * Azure data lake - for storing data at each transformation step
 * pinecone (or some kind of cloud vector database) - for storing the final calculated feature vectors in some kind of cloud feature vector storage
 * Terraform - for automating setup of azure services/cloud infrastructure
+* try use of free services for 12 months provided by MS azure, includes:
+cosmos db (1000 unit requests, 400 RU/s provisioned throughput with 25 GB of storage)
+batch compute (free completely) to use python scripts and notebooks as jobs
+azure data factory (5 activities only limit)
+azure container registry (1 standard tier registry for 100gb storage and 10 webhooks)
+azure key vault (10000 transactions of read and write)
+azure blob,
+azure ml studio,
+* try use of feast for storing feature vectors for machine learning workflows: https://feast.dev/, https://www.hopsworks.ai/, 
+
 
 # Insights:
 * to set env variable in windows via CMd use `SETX <name of user env var> "<some value>"`
@@ -2255,6 +2265,28 @@ e.g.
 * if you accidentally commit secrets what you should do is remove the secret from the file/s and then run `git commit --amend --all`
 
 
+* the reason why `pagefile.sys` is taking up too much space when you run a notebook that loads all the signal files into a single dataframe is because the variable that holds this one giant dataframe takes up too much space in memory. `pagefile.sys` is a system file in Windows that acts as a virtual memory extension for your computer's RAM (Random Access Memory)
+
+* when `importError: cannot import name '__version__' from 'werkzeug'` in airflow occurs especially when using newer versions like 3.0.6 we must downgrade werkzeug below 3.x.x e.g. 2.3.7 as airflow operates on these versions. But sometimes downgradign will raise other conflicts with other dependencies like `azure-functions` depending on werkzeug version that needs to be 3.x.x and above.
+
+* 
+```
+>>> conn.sql(f"""CREATE OR REPLACE SECRET az_sgp (TYPE azure, CONNECTION_STRING '{conn_str}');""")
+>>> conn.sql("SELECT filename, content FROM read_text('abfss://sgppipelinesa.dfs.core.windows.net/sgppipelinesa-bronze/1 028-20100710-hne/etc/README')")
+```
+which raises
+```
+  File "<stdin>", line 1, in <module>
+duckdb.duckdb.IOException: IO Error: AzureBlobStorageFileSystem could not open file: 'abfss://sgppipelinesa.dfs.core.windows.net/sgppipelinesa-bronze/1028-20100710-hne/etc/README', unknown error occurred, this could mean the credentials used were wrong. Original error message: 'Fail to get a new connection for: https://storage account.blob.core.windows.net. Problem with the SSL CA cert (path? access rights?)'
+```
+
+this still occurs if run in shell of airflow docker container with duckdb version of 1.2.2. The reason why this occurs in linux environment and not in a local environment like that of windows is because when DuckDB is build it link with static libraries that expect the ca-certificates at a specific location but unfortunately this location depend on the Linux distribution. Moreover the airflow container which is essentially a linux environment is not able to verify the SSL certificate of the Azure Blob Storage endpoint. This is a common issue when working with stripped-down Docker images.
+
+Your local machine that runs on windows has a pre-installed "trust store" of trusted Certificate Authority (CA) certificates. These certificates are used to verify that the server you're connecting to (in this case, sgppipelinesa.blob.core.windows.net) is who it claims to be. Your Airflow container, however, is likely built from a minimal base image that is missing these trusted certificates. So at best a solution can be to always include the SQL line `SET azure_transport_option_type = 'curl'` after installing and loading the azure file system in our in memory duckdb database and then creating the secret with our connection string. This is so that when a request is sent to azure we are doing it using curl which is native to linux and not its default value `default` which is used in windows machines. 
+
+# Workarounds:
+* I can't use spark because its too expensive, and spark when ran in environment just takes too much time to process the feeatures of the signals so I use duckdb, pyarrow, numpy, and librosa together
+* but duckdb can't read in azure data lake storage gen2 using airflow for some reason but can in local environment without linux so I'm debating whether to still use azure as storage and just use s3
 
 # Articles, Videos, Papers: 
 * terraform tutorial for setting up azure services via code: https://developer.hashicorp.com/terraform/tutorials/azure-get-started/infrastructure-as-code
@@ -2280,3 +2312,5 @@ https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegatio
 * azure databricks cluster setup: https://medium.com/@phaneendraganji3/how-i-solved-the-vm-sku-not-available-in-your-region-error-while-creating-a-databricks-compute-fd8910247534
 
 * creating adf, adf activities, adf linked services, adf datasets: https://learn.microsoft.com/en-us/azure/data-factory/quickstart-create-data-factory-python#create-a-linked-service
+
+* using apache spark (pyspark) to generate synthetic features of minority class in imbalanced datasets: https://medium.com/data-and-beyond/exploring-pyspark-ml-for-machine-learning-handling-class-imbalances-part-2-2-f9113f6b40ba

@@ -26,6 +26,23 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+
+    # include api keys
+    # note we can just store these important credentials using 
+    # azure key vault
+    STORAGE_ACCOUNT_NAME: ${STORAGE_ACCOUNT_NAME}
+    # note this is rotated/changed at a certain interval
+    STORAGE_ACCOUNT_KEY: ${STORAGE_ACCOUNT_KEY}
+    STORAGE_ACCOUNT_CONN_STR: ${STORAGE_ACCOUNT_CONN_STR}
+    STORAGE_ACCOUNT_URL: ${STORAGE_ACCOUNT_URL}
+    
+    AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+    AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+    AZURE_SUBSCRIPTION_ID: ${AZURE_SUBSCRIPTION_ID}
+    AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+    RESOURCE_GROUP_NAME: ${RESOURCE_GROUP_NAME}
+
+    SUPABASE_TOKEN: ${SUPABASE_TOKEN}
     
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
@@ -36,13 +53,18 @@ x-airflow-common:
     # /opt/airflow/include/data/
     - ${AIRFLOW_PROJ_DIR:-.}/include:/opt/airflow/include
 
-    # # create (mount) neccessary directories/volumes as root user so we don't have
-    # # to create the directories with no permissions for non-root user to read write
-    # # and execute within these directories
-    # - ${AIRFLOW_PROJ_DIR:-.}/include/data/cdi-data-raw:/opt/airflow/include/data/cdi-data-raw
-    # - ${AIRFLOW_PROJ_DIR:-.}/include/data/population-data-raw:/opt/airflow/include/data/population-data-raw
-    # - ${AIRFLOW_PROJ_DIR:-.}/include/data/cdi-data-transformed:/opt/airflow/include/data/cdi-data-transformed
-    # - ${AIRFLOW_PROJ_DIR:-.}/include/data/population-data-transformed:/opt/airflow/include/data/population-data-transformed
+    # create (mount) neccessary directories/volumes as root user so we don't have
+    # to create the directories with no permissions for non-root user to read write
+    # and execute within these directories
+    - ${AIRFLOW_PROJ_DIR:-.}/include/data/bronze:/opt/airflow/include/data/bronze
+    - ${AIRFLOW_PROJ_DIR:-.}/include/data/silver:/opt/airflow/include/data/silver
+    - ${AIRFLOW_PROJ_DIR:-.}/include/data/silver/stage-01:/opt/airflow/include/data/silver/stage-01
+    - ${AIRFLOW_PROJ_DIR:-.}/include/data/silver/stage-02:/opt/airflow/include/data/silver/stage-02
+    - ${AIRFLOW_PROJ_DIR:-.}/include/data/silver/stage-03:/opt/airflow/include/data/silver/stage-03
+    - ${AIRFLOW_PROJ_DIR:-.}/include/data/silver/stage-04:/opt/airflow/include/data/silver/stage-04
+    - ${AIRFLOW_PROJ_DIR:-.}/include/data/miscellaneous:/opt/airflow/include/data/miscellaneous
+    - ${AIRFLOW_PROJ_DIR:-.}/include/data/gold:/opt/airflow/include/data/gold
+
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
