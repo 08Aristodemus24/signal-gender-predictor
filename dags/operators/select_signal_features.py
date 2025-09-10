@@ -133,15 +133,17 @@ if __name__ == "__main__":
 
     feat_cols = list(filter(lambda feat_col: not "label" in feat_col, train_data_sc_sm_table.column_names))
 
+    # convert the tables features and labels into numpy arrays
+    # for feature selection
     train_output_sm = train_data_sc_sm_table.select(["label"]).to_pandas().to_numpy().ravel()
     train_input_sc_sm = train_data_sc_sm_table.select(feat_cols).to_pandas().to_numpy()
-
     val_output_sm = val_data_sc_sm_table.select(["label"]).to_pandas().to_numpy().ravel()
     val_input_sc_sm = val_data_sc_sm_table.select(feat_cols).to_pandas().to_numpy()
-
     test_output_sm = test_data_sc_sm_table.select(["label"]).to_pandas().to_numpy().ravel()
     test_input_sc_sm = test_data_sc_sm_table.select(feat_cols).to_pandas().to_numpy()
 
+    # if the selected features do not yet exist we will have to
+    # run block under this if statemetn
     if not misc_container_client.get_file_client("selected_feats.json").exists():
         n_features = 60
 
