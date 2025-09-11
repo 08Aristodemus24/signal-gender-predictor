@@ -84,7 +84,12 @@ with DAG(
         bash_command=f"python {AIRFLOW_HOME}/operators/select_signal_features.py"
     )
 
+    load_signal_features = BashOperator(
+        task_id="load_signal_features",
+        bash_command=f"python {AIRFLOW_HOME}/operators/load_signal_features.py"
+    )
+
     extract_signals >> [ingest_signals, ingest_labels]
     [ingest_signals, ingest_labels] >> second_stage_signal_transform 
     second_stage_signal_transform >> third_stage_signal_transform 
-    third_stage_signal_transform >> augment_signals >> select_signal_features
+    third_stage_signal_transform >> augment_signals >> select_signal_features >> load_signal_features
