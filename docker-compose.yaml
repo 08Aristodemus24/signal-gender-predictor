@@ -42,7 +42,7 @@ x-airflow-common:
     AZURE_TENANT_ID: ${AZURE_TENANT_ID}
     RESOURCE_GROUP_NAME: ${RESOURCE_GROUP_NAME}
 
-    SUPABASE_TOKEN: ${SUPABASE_TOKEN}
+    MOTHERDUCK_TOKEN: ${MOTHERDUCK_TOKEN}
     
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags

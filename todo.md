@@ -56,11 +56,13 @@ I want to read it like this instead of reading all the parquet files all at once
 
 maybe if gantong array format with corresponding spark dataframes inside we can use 5 workers or 5 cores to process 5 rows in this array concurrently and use spark workers once inside each array</s>
 
-* I need to split data first into training validation and test splits, by splitting dataset into male and female, then dividing each into further train, val, and test.
+* <s>I need to split data first into training validation and test splits, by splitting dataset into male and female, then dividing each into further train, val, and test.</s>
 * need to
 https://www.databricks.com/blog/2021/10/12/native-support-of-session-window-in-spark-structured-streaming.html
 
-* work around for processing more than 5000 records using the lookup activity in azure. Because I have a .json file with about 6321 records not a SQL table and I want to be able to process these rows all at once without using multiple lookup activities?
+* <s>work around for processing more than 5000 records using the lookup activity in azure. Because I have a .json file with about 6321 records not a SQL table and I want to be able to process these rows all at once without using multiple lookup activities?</s>
+
+
 
 # Setting up azure workspace
 * create an azure account at 
@@ -232,3 +234,24 @@ from here we just do our typical pyspark operations in transformation and write 
 * to orchestrate and automate this whole process we use azure data factory (ADF)
 
 like airflows feature of its tasks being able to use return values from previous tasks called xcoms, ADF also has this feature 
+
+# Deployment:
+* because we are dealing with a multi container/service application that uses an airflow webserver, init, triggerer, scheduler, and postgres, we need some way to deploy other than azure container instances or azure container apps as this only use a single docker file.
+* my guess is this has something to do with kubernetes which is a multi node cluster able to handle multiple docker containers/services efficiently.
+* I will also I think have to use azure kubernetes service
+* I will have to use azure database using postgres to replace the local postgres database to this one to store logs and meta data in the airflow container.
+* some resources:
+- deploying airflow in azure: https://azure.microsoft.com/en-us/blog/deploying-apache-airflow-in-azure-to-build-and-run-data-pipelines/
+- https://medium.com/@ferdiferdiferdi/deploying-apache-airflow-in-azure-a-secured-way-0c126df3031d
+- airflow helm: An Apache Airflow Helm chart is a pre-packaged set of Kubernetes resources designed to deploy and manage Apache Airflow on a Kubernetes cluster using Helm.
+Key aspects of an Apache Airflow Helm chart:
+Helm Integration: It leverages Helm, a package manager for Kubernetes, to simplify the deployment, configuration, and management of Airflow. Helm charts allow for versioning, easy upgrades, and rollbacks of applications.
+Kubernetes Deployment: The chart contains all the necessary Kubernetes manifests (Deployments, Services, ConfigMaps, Secrets, etc.) to set up a functional Airflow environment within a Kubernetes cluster. This includes components like the Airflow scheduler, webserver, workers, and a database backend (e.g., PostgreSQL).
+Configuration Flexibility: It provides a values.yaml file where users can customize various aspects of their Airflow deployment, such as the executor type (CeleryExecutor, KubernetesExecutor), resource limits, database settings, and Airflow-specific configurations.
+Scalability and Reproducibility: By deploying Airflow on Kubernetes with Helm, users gain the benefits of Kubernetes' scalability and resilience, while Helm ensures reproducible deployments across different environments.
+Official Support: The official Apache Airflow Helm chart is maintained by the Airflow community and PMC members, ensuring compatibility with new Airflow versions and best practices for production deployments.
+
+- 1st article on deploying airflow to azure: https://learn.microsoft.com/en-us/azure/aks/airflow-overview
+- 2nd article on deploying airflow to azure: https://learn.microsoft.com/en-us/azure/aks/airflow-create-infrastructure
+a. need helm installed to do it on windows: `choco install kubernetes-helm`
+

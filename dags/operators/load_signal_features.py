@@ -56,6 +56,7 @@ if __name__ == "__main__":
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
     credential = os.environ.get("STORAGE_ACCOUNT_KEY")
     conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")
+    motherduck_token = os.environ.get("MOTHERDUCK_TOKEN")
 
     # use this path if the files are stored in a 
     # cloud provider 
@@ -65,7 +66,7 @@ if __name__ == "__main__":
 
     # duckdb:///md:signal_gender_predictor_db
     print("connecting to duckdb...")
-    conn = duckdb.connect("md:", config={"motherduck_token": os.environ['MOTHERDUCK_TOKEN']})
+    conn = duckdb.connect("md:", config={"motherduck_token": motherduck_token})
     print("connected to duckdb.\n")
 
     # print(conn.sql("""SELECT CURRENT_DATABASE()"""))
