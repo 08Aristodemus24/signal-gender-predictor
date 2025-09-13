@@ -62,6 +62,9 @@ https://www.databricks.com/blog/2021/10/12/native-support-of-session-window-in-s
 
 * <s>work around for processing more than 5000 records using the lookup activity in azure. Because I have a .json file with about 6321 records not a SQL table and I want to be able to process these rows all at once without using multiple lookup activities?</s>
 
+* need to rewrite ETL architecture that now uses airflow integrated ADF in its a sub pipeline
+* need to draw how the transformation works per stage in a visual manner
+
 
 
 # Setting up azure workspace

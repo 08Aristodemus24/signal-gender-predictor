@@ -80,25 +80,6 @@ The following are reference points that should be taken into account in the subm
 6. check if pip is installed by running `conda list -e` and checking list
 7. if it is there then move to step 8, if not then install `pip` by typing `conda install pip`
 8. if `pip` exists or install is done run `pip install -r requirements.txt` in the directory you are currently in
-9. when install is done assuming we are already in environment run `python download_data.py` to download `.tar` files
-10. after all downloads have finished and script is finished run next `python extract_data.py` to uncompress `.tar` files and delete the unnecessary zip files after extraction. This will result in a data folder being created with all the subjects respective folders containing their audio recordings
-11. run the `prepare_data` notebook as this will create the necessary files containing the features of the audio signals taken from the loaded raw audio signals
-12. this will result in the creation of the `_EXTRACTED_DATA` folder in the data folder and in it will be two sub directories test and train containing the features for training and testing the model. Each sub directory contains the two categories of files for each subject: a feature file and a label files named `<name of subject>_features.csv` and `<name of subject>_labels.csv`. This we will concurrently load when training script is ran.
-13. to train model run `python tuning_dl.py -m <name of model we want to use e.g. lstm list of models are listed in the dictionary object in the script> -c <the configuration we want our training to be e.g. deep (if we want to use a deep learning model and trad if we want a traditional ML model)> -lr <learning rate value e.g. 1e-3> --batch_size <batch size value e.g. 256> --mode <mode we want script to run on e.g. training> --hyper_param_list <a list of hyper parameters we use during training of our model separated by spaces with each value representing the hyper parameter we want to add and next to it its value separated by an underscore e.g. hertz_8000 window_time_0.25 hop_time_0.125 n_a_128 dense_drop_prob_0.2 rnn_drop_prob_0.2>`
-
-some preset commands we can already use:
-- `python tuning_dl.py -m lstm -c deep -lr 1e-3 --batch_size 256 --mode training --hyper_param_list hertz_8000 window_time_0.25 hop_time_0.125 n_a_128 dense_drop_prob_0.2 rnn_drop_prob_0.2` to train a sequential LSTM neural network model\
-- `python tuning_dl.py -m softmax -c trad -lr 1e-3 --batch_size 256 --mode training --hyper_param_list hertz_8000 window_time_0.25 hop_time_0.125` to train a softmax regression model which will use the engineered features we have
-
-14. screenshot of extracted features: 
-![dataframes](./figures%20&%20images/Screenshot%202025-03-12%20143231.png)
-![dataframes](./figures%20&%20images/Screenshot%202025-03-12%20140242.png)
-15. screenshot of labels: 
-![dataframes](./figures%20&%20images/Screenshot%202025-03-12%20143241.png)
-![dataframes](./figures%20&%20images/Screenshot%202025-03-12%20140300.png)
-
-
-15. you can run notebook visualization.ipynb to see performance metric values of the trained models 
 
 ## To implement/fix:
 1. testing/evaluation script to use saved model weights to see overall test performance of model
@@ -109,52 +90,28 @@ some preset commands we can already use:
 6. solving why f1 score seems to bee a numpy array instead of a single value: https://stackoverflow.com/questions/68596302/f1-score-metric-per-class-in-tensorflow
 7.  `: RESOURCE_EXHAUSTED: OOM when allocating tensor with shape[128,128] and type float on /job:localhost/replica:0/task:0/device:CPU:0 by allocator mklcpu 2025-03-12 16:17:33.380804: I tensorflow/core/framework/local_rendezvous.cc:405] Local rendezvous is aborting with status: RESOURCE_EXHAUSTED: OOM when allocating tensor with shape[256,128] and type float on /job:localhost/replica:0/task:0/device:CPU:0 by allocator mklcpu` this error may be due to the immense size of the input data which we know is (m, 2000, 1) and given we have 6815 subjects, which is incomparable to the previous project I did which only had 43 subjects at most, this preprocessing of the data for deep learning tasks, I might have to do with a better machine, or somehow interpolate the raw audio signals to a much lower frequency, which may unfortunately cause importatn features to be lost.
 
-## Business Problem:
-In a world increasingly reliant on voice and audio data, a fundamental business challenge is the inability to efficiently and affordably convert raw, unstructured audio files into actionable intelligence.
+## Business Use Case:
+Problem:
+* voice and audio data can be difficult to efficiently and affordably convert raw, unstructured audio files into actionable intelligence
+* Raw audio files are large, unwieldy, and require specialized tools to process. Extracting meaningful features from these signals is computationally intensive, and traditional methods often fail to scale, creating a massive data bottleneck that prevents machine learning projects from ever reaching production.
+* Relying solely on expensive, proprietary cloud services can be suffocating cost wise for every stage of the pipeline—from data ingestion to feature transformation. This traps organizations into a cycle of high operational expenses, making valuable analytics and machine learning applications inaccessible to all but the largest enterprises.
+* Without a standardized, automated, and repeatable process, every machine learning experiment becomes a manual, one-off project. This leads to inconsistent results, difficulty in reproducing models, and a significant amount of time and resources wasted on manual data wrangling rather than on model innovation.
 
-The Data Bottleneck: Raw audio files are large, unwieldy, and require specialized tools to process. Extracting meaningful features from these signals is computationally intensive, and traditional methods often fail to scale, creating a massive data bottleneck that prevents machine learning projects from ever reaching production.
-
-The Cost Trap of Cloud Services: Relying solely on expensive, proprietary cloud services for every stage of the pipeline—from data ingestion to feature transformation—can be prohibitively costly. This traps organizations into a cycle of high operational expenses, making valuable analytics and machine learning applications inaccessible to all but the largest enterprises.
-
-The MLOps Challenge: Without a standardized, automated, and repeatable process, every machine learning experiment becomes a manual, one-off project. This leads to inconsistent results, difficulty in reproducing models, and a significant amount of time and resources wasted on manual data wrangling rather than on model innovation.
-
-The Solution: A Cost-Effective, End-to-End MLOps Pipeline
-My project was a direct response to these challenges. It is a testament to the power of a hybrid architecture, combining the best of managed cloud services with low-cost, open-source tools to build a comprehensive MLOps pipeline that is both scalable and cost-effective.
-
-Intelligent Data Ingestion: The pipeline begins with a custom-built Azure Data Factory (ADF) sub-pipeline, intelligently extracting raw audio signals directly to a bronze container in Azure Data Lake Storage (ADLS2), effectively and affordably managing the initial data ingestion from diverse HTTP resources.
-
-Massively Parallel Feature Engineering: Instead of an expensive data warehouse, a Python-based transformation layer, orchestrated by Apache Airflow, processes terabytes of data directly in ADLS2. This leverages open-source libraries like Librosa for advanced signal feature extraction, NumPy for numerical efficiency, and DuckDB for lightning-fast, in-process analytics, transforming raw signals into refined features in a multi-stage process.
-
-Centralized and Reusable Features: The final, cleaned, and augmented features are stored in a gold-layer and then pushed to a central, live feature store using Feast and MotherDuck. This creates a single source of truth for all features, solving the crucial problem of "training-serving skew" and enabling both efficient model training and low-latency inference for real-time applications.
-
-Operational Excellence: The entire process is automated and orchestrated by Apache Airflow, ensuring reliability, reproducibility, and transparent monitoring of every pipeline run. This transforms a complex, multi-step process into a single, repeatable, and production-ready workflow.
-
-This project demonstrates the ability to not just build a model, but to engineer the entire system around it, creating a robust, affordable, and scalable foundation for any future analytics or machine learning initiatives.
+Solution:
+* This project was a direct response to these challenges. It is a testament to the power of a hybrid architecture, combining the best of managed cloud services yet still being cost conservative, open-source tools to build a comprehensive MLOps pipeline that is both scalable and cost-effective.
+* The pipeline begins with a custom-built Azure Data Factory (ADF) sub-pipeline, intelligently extracting raw audio signals directly to a bronze container in Azure Data Lake Storage (ADLS2), effectively and affordably managing the initial data ingestion from diverse HTTP resources.
+* Massively Parallel Feature Engineering: Instead of an expensive data warehouse, a Python-based transformation layer, orchestrated by Apache Airflow, processes gigabytes of the data directly in ADLS2. This leverages open-source libraries like Librosa for advanced signal feature extraction, NumPy for numerical efficiency, and DuckDB for lightning-fast, in-process analytics, transforming raw signals into refined features in a multi-stage process.
+* Centralized and Reusable Features: The final, cleaned, and augmented features are stored in a gold-layer and then pushed to a central, live analytical database using MotherDuck. This creates a single source of truth for all features, enabling both efficient model training and low-latency inference for real-time applications.
+* The entire process is automated and orchestrated by Apache Airflow, ensuring reliability, reproducibility, and transparent monitoring of every pipeline run. This transforms a complex, multi-step process into a single, repeatable, and production-ready workflow.
 
 
 
-For a hiring manager: "Developed an end-to-end Machine Learning Operations (MLOps) pipeline for a Signal Gender Prediction model, reducing cloud operational costs by over 70% by leveraging a hybrid cloud and open-source architecture. The pipeline automates the ingestion, transformation, and feature engineering of large-scale audio datasets, generating high-quality features for model training and serving."
+Outcome: 
+* Developed an end-to-end MLOps pipeline for a audio signal gender prediction model, reducing cloud operational costs by over 70% by leveraging the cloud only for compute during extraction and storage and the rest for open source tools. 
+* The pipeline automates the ingestion, transformation, and feature engineering of large-scale audio datasets, generating high-quality features for model training and serving.
+* Architected and implemented a scalable data pipeline to process gigabytes of unstructured audio data. The system generates high-impact features for a voice-based gender prediction model providing a repeatable and production-ready framework for real-time audio analytics and a foundation for new voice-based AI applications.
+* Engineered a multi-stage data transformation pipeline to efficiently process over 3.7 billion audio signals, handling data volumes that challenge traditional cloud data warehouse solutions.
 
-For a technical audience: "Architected and implemented a scalable data pipeline to process terabytes of unstructured audio data. The system generates high-impact features for a voice-based gender prediction model, utilizing a cost-effective lakehouse pattern. The solution provides a repeatable and production-ready framework for real-time audio analytics and a foundation for new voice-based AI applications."
-
-High-Impact Resume Bullet Points
-You can mix and match these to fit your resume's style and space.
-
-Focus on the Pipeline & Cost Savings:
-
-Designed and deployed a cost-effective, end-to-end data engineering and MLOps pipeline for a signal gender prediction model, resulting in significant savings over expensive, proprietary cloud services.
-
-Reduced cloud infrastructure costs by architecting a hybrid pipeline that integrates a low-cost orchestrator (Apache Airflow) with Azure Data Factory for optimized data ingestion and transformation.
-
-Focus on the Technical Implementation:
-
-Engineered a multi-stage data transformation pipeline (Bronze-Silver-Gold) using PyArrow, DuckDB, and NumPy to efficiently process over 500,000+ audio signals, handling data volumes that challenge traditional cloud data warehouse solutions.
-
-Developed a custom Airflow operator to orchestrate and monitor an Azure Data Factory pipeline, demonstrating a sophisticated understanding of cross-platform workflow automation.
-
-Implemented a production-ready feature engineering workflow using Librosa and NumPy, generating complex signal features from unstructured audio data that were then stored in a feature database (Supabase/Feast) for reliable model training.
-
-Focus on the Architecture & Scalability:
 
 Designed a resilient, containerized application with a multi-service architecture, paving the way for seamless deployment to scalable environments like Azure Kubernetes Service (AKS) or AWS EKS.
 
