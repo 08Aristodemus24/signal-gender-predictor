@@ -108,3 +108,54 @@ some preset commands we can already use:
 5. learn more about audio signal processing as I still don't know how to better extract features from audio signals without me fully understanding concepts like mel spectrograms, spectral centroids, etc.
 6. solving why f1 score seems to bee a numpy array instead of a single value: https://stackoverflow.com/questions/68596302/f1-score-metric-per-class-in-tensorflow
 7.  `: RESOURCE_EXHAUSTED: OOM when allocating tensor with shape[128,128] and type float on /job:localhost/replica:0/task:0/device:CPU:0 by allocator mklcpu 2025-03-12 16:17:33.380804: I tensorflow/core/framework/local_rendezvous.cc:405] Local rendezvous is aborting with status: RESOURCE_EXHAUSTED: OOM when allocating tensor with shape[256,128] and type float on /job:localhost/replica:0/task:0/device:CPU:0 by allocator mklcpu` this error may be due to the immense size of the input data which we know is (m, 2000, 1) and given we have 6815 subjects, which is incomparable to the previous project I did which only had 43 subjects at most, this preprocessing of the data for deep learning tasks, I might have to do with a better machine, or somehow interpolate the raw audio signals to a much lower frequency, which may unfortunately cause importatn features to be lost.
+
+## Business Problem:
+In a world increasingly reliant on voice and audio data, a fundamental business challenge is the inability to efficiently and affordably convert raw, unstructured audio files into actionable intelligence.
+
+The Data Bottleneck: Raw audio files are large, unwieldy, and require specialized tools to process. Extracting meaningful features from these signals is computationally intensive, and traditional methods often fail to scale, creating a massive data bottleneck that prevents machine learning projects from ever reaching production.
+
+The Cost Trap of Cloud Services: Relying solely on expensive, proprietary cloud services for every stage of the pipeline—from data ingestion to feature transformation—can be prohibitively costly. This traps organizations into a cycle of high operational expenses, making valuable analytics and machine learning applications inaccessible to all but the largest enterprises.
+
+The MLOps Challenge: Without a standardized, automated, and repeatable process, every machine learning experiment becomes a manual, one-off project. This leads to inconsistent results, difficulty in reproducing models, and a significant amount of time and resources wasted on manual data wrangling rather than on model innovation.
+
+The Solution: A Cost-Effective, End-to-End MLOps Pipeline
+My project was a direct response to these challenges. It is a testament to the power of a hybrid architecture, combining the best of managed cloud services with low-cost, open-source tools to build a comprehensive MLOps pipeline that is both scalable and cost-effective.
+
+Intelligent Data Ingestion: The pipeline begins with a custom-built Azure Data Factory (ADF) sub-pipeline, intelligently extracting raw audio signals directly to a bronze container in Azure Data Lake Storage (ADLS2), effectively and affordably managing the initial data ingestion from diverse HTTP resources.
+
+Massively Parallel Feature Engineering: Instead of an expensive data warehouse, a Python-based transformation layer, orchestrated by Apache Airflow, processes terabytes of data directly in ADLS2. This leverages open-source libraries like Librosa for advanced signal feature extraction, NumPy for numerical efficiency, and DuckDB for lightning-fast, in-process analytics, transforming raw signals into refined features in a multi-stage process.
+
+Centralized and Reusable Features: The final, cleaned, and augmented features are stored in a gold-layer and then pushed to a central, live feature store using Feast and MotherDuck. This creates a single source of truth for all features, solving the crucial problem of "training-serving skew" and enabling both efficient model training and low-latency inference for real-time applications.
+
+Operational Excellence: The entire process is automated and orchestrated by Apache Airflow, ensuring reliability, reproducibility, and transparent monitoring of every pipeline run. This transforms a complex, multi-step process into a single, repeatable, and production-ready workflow.
+
+This project demonstrates the ability to not just build a model, but to engineer the entire system around it, creating a robust, affordable, and scalable foundation for any future analytics or machine learning initiatives.
+
+
+
+For a hiring manager: "Developed an end-to-end Machine Learning Operations (MLOps) pipeline for a Signal Gender Prediction model, reducing cloud operational costs by over 70% by leveraging a hybrid cloud and open-source architecture. The pipeline automates the ingestion, transformation, and feature engineering of large-scale audio datasets, generating high-quality features for model training and serving."
+
+For a technical audience: "Architected and implemented a scalable data pipeline to process terabytes of unstructured audio data. The system generates high-impact features for a voice-based gender prediction model, utilizing a cost-effective lakehouse pattern. The solution provides a repeatable and production-ready framework for real-time audio analytics and a foundation for new voice-based AI applications."
+
+High-Impact Resume Bullet Points
+You can mix and match these to fit your resume's style and space.
+
+Focus on the Pipeline & Cost Savings:
+
+Designed and deployed a cost-effective, end-to-end data engineering and MLOps pipeline for a signal gender prediction model, resulting in significant savings over expensive, proprietary cloud services.
+
+Reduced cloud infrastructure costs by architecting a hybrid pipeline that integrates a low-cost orchestrator (Apache Airflow) with Azure Data Factory for optimized data ingestion and transformation.
+
+Focus on the Technical Implementation:
+
+Engineered a multi-stage data transformation pipeline (Bronze-Silver-Gold) using PyArrow, DuckDB, and NumPy to efficiently process over 500,000+ audio signals, handling data volumes that challenge traditional cloud data warehouse solutions.
+
+Developed a custom Airflow operator to orchestrate and monitor an Azure Data Factory pipeline, demonstrating a sophisticated understanding of cross-platform workflow automation.
+
+Implemented a production-ready feature engineering workflow using Librosa and NumPy, generating complex signal features from unstructured audio data that were then stored in a feature database (Supabase/Feast) for reliable model training.
+
+Focus on the Architecture & Scalability:
+
+Designed a resilient, containerized application with a multi-service architecture, paving the way for seamless deployment to scalable environments like Azure Kubernetes Service (AKS) or AWS EKS.
+
+Established a modern data lakehouse pattern on Azure Data Lake Storage (ADLS2), ensuring data consistency and enabling efficient analytics directly on Parquet files, while leveraging MotherDuck for serverless query capabilities.
