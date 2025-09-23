@@ -48,11 +48,11 @@ def load_signal_features(conn, table_name: str, GOLD_DATA_DIR: str, GOLD_FOLDER_
 if __name__ == "__main__":
     # Load azure credentials in order for duck db to read parquet files in adl2 gold layer 
 
-    # # use this only in development
-    # print("loading env variables...")
-    # env_dir = Path('../../').resolve()
-    # load_dotenv(os.path.join(env_dir, '.env'))
-    # print("env variables loaded.\n")
+    # use this only in development
+    print("loading env variables...")
+    env_dir = Path('../../').resolve()
+    load_dotenv(os.path.join(env_dir, '.env'))
+    print("env variables loaded.\n")
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
     credential = os.environ.get("STORAGE_ACCOUNT_KEY")
     conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")

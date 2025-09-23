@@ -52,3 +52,4 @@ selenium==4.32.0
 webdriver-manager==4.0.2
 Werkzeug==2.3.7
 xlrd==2.0.1
+ydf==0.8.0

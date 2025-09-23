@@ -2284,6 +2284,9 @@ this still occurs if run in shell of airflow docker container with duckdb versio
 
 Your local machine that runs on windows has a pre-installed "trust store" of trusted Certificate Authority (CA) certificates. These certificates are used to verify that the server you're connecting to (in this case, sgppipelinesa.blob.core.windows.net) is who it claims to be. Your Airflow container, however, is likely built from a minimal base image that is missing these trusted certificates. So at best a solution can be to always include the SQL line `SET azure_transport_option_type = 'curl'` after installing and loading the azure file system in our in memory duckdb database and then creating the secret with our connection string. This is so that when a request is sent to azure we are doing it using curl which is native to linux and not its default value `default` which is used in windows machines. 
 
+* FastAPI raises 422 Unprocessable Entity error when uploading File through Postman
+https://stackoverflow.com/questions/79281001/fastapi-raises-422-unprocessable-entity-error-when-uploading-file-through-postma
+
 # Workarounds:
 * I can't use spark because its too expensive, and spark when ran in environment just takes too much time to process the feeatures of the signals so I use duckdb, pyarrow, numpy, and librosa together
 * but duckdb can't read in azure data lake storage gen2 using airflow for some reason but can in local environment without linux so I'm debating whether to still use azure as storage and just use s3
