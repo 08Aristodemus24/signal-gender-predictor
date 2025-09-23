@@ -31,16 +31,15 @@ models = {
 
 # load miscellaneous
 def load_miscs():
-    # Retrieve credentials from environment variables
-    # this is strictly used only in development
-    # load env variables
-    env_dir = Path('./').resolve()
-    load_dotenv(os.path.join(env_dir, '.env'))
+    # # Retrieve credentials from environment variables
+    # # this is strictly used only in development
+    # # load env variables
+    # env_dir = Path('./').resolve()
+    # load_dotenv(os.path.join(env_dir, '.env'))
 
     # load credentials
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
     credential = os.environ.get("STORAGE_ACCOUNT_KEY")
-    conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")
 
     # cloud
     # create client with generated sas token
