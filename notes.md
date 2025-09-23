@@ -2287,6 +2287,20 @@ Your local machine that runs on windows has a pre-installed "trust store" of tru
 * FastAPI raises 422 Unprocessable Entity error when uploading File through Postman
 https://stackoverflow.com/questions/79281001/fastapi-raises-422-unprocessable-entity-error-when-uploading-file-through-postma
 
+* to track binary files with git large file system to avoid the error of 
+```
+remote: Your push was rejected because it contains binary files.
+remote: Please use https://git-lfs.github.com/ to store binary files.
+remote: See also: https://hf.co/docs/hub/repositories-getting-started#terminal
+```
+
+`git lfs install`
+`git lfs track /path/to your/files/*`
+
+by using a wildcard like * we are telling git to push anything that is in a specific directory we specify
+
+* to call our api we have to use `https://aristodemus8-signal-gender-predictor.hf.space/predict/` not `https://aristodemus8-signal-gender-predictor.hf.space/predict`
+
 # Workarounds:
 * I can't use spark because its too expensive, and spark when ran in environment just takes too much time to process the feeatures of the signals so I use duckdb, pyarrow, numpy, and librosa together
 * but duckdb can't read in azure data lake storage gen2 using airflow for some reason but can in local environment without linux so I'm debating whether to still use azure as storage and just use s3
