@@ -2297,6 +2297,8 @@ remote: See also: https://hf.co/docs/hub/repositories-getting-started#terminal
 `git lfs install`
 `git lfs track /path/to your/files/*`
 
+then just `git add .`, `git commit -m "update"`, and `git push origin <master branch>` how you would normally do
+
 by using a wildcard like * we are telling git to push anything that is in a specific directory we specify
 
 * to call our api we have to use `https://aristodemus8-signal-gender-predictor.hf.space/predict/` not `https://aristodemus8-signal-gender-predictor.hf.space/predict`

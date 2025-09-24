@@ -12,6 +12,18 @@
 ## Previous Cloud Infrastructure:
 ![alt text](./figures%20&%20images/assets/cloud%20infrastructure.jpg)
 
+## Technologies used:
+1. Apache Airflow
+2. DuckDB/Motherduck
+3. Librosa
+4. PyArrow
+5. Azure Data Factory
+6. Azure Data Lake Gen2
+7. Azure Function App
+8. Scikit-Learn
+9. Google Colab
+10. Terraform
+
 ## Dataset
 The raw data consists of, as of 30th August 2018, 95,481 audio samples of male and female speakers speaking in short English sentences. The raw data is compressed using `.tgz` files. Each `.tgz` compressed file contains the following directory structure and files:
 
@@ -54,19 +66,20 @@ We recommend considering the following for your data pre-processing:
   [1]: https://en.wikipedia.org/wiki/Voice_frequency#Fundamental_frequency
   [2]: http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit/
 
-## Question Set
+## FAQ
+1. How did you go about extracting features from the raw data? I used librosa to extract features more specific to audio signals such as spectral contrast, spectral rolloff, mel frequency cepstral coefficients, etc. aside from typical statistical and morphological features like mean, median, min, max, kurtosis, skewness, etc. which were computed using in-built SQL functions 
 
-The following are reference points that should be taken into account in the submission. Please use them to guide the reasoning behind the feature extraction, exploration, analysis and model building, rather than answer them point blank.
+2. Which algorithms have you chosen, and what do each resulting model tell you about their performance? I chose a gradient boosted tree algorithm, which resulted in a model with 
 
-1. How did you go about extracting features from the raw data?
-2. Which features do you believe contain relevant information?
-  1. How did you decide which features matter most?
-  2. Do any features contain similar information content?
-  3. Are there any insights about the features that you didn't expect? If so, what are they?
-  4. Are there any other (potential) issues with the features you've chosen? If so, what are they?
-3. Which goodness of fit metrics have you chosen, and what do they tell you about the model(s) performance?
+Tree-based models (like Gradient Boosted Trees) are highly effective at finding complex, non-linear relationships and interactions within this type of structured, tabular data. They don't need to "learn" the features because you've already provided them with high-quality, relevant information. They excel at using these features to make accurate predictions.
+
   1. Which model performs best?
   2. How would you decide between using a more sophisticated model versus a less complicated one?
+
+  Deep Learning Models are designed to automatically learn features from raw, unstructured data. You would feed the raw audio waveform directly into the model, and its many layers would learn to identify patterns like pitch and timbre on their own. However, they require massive amounts of data and computational power to do this effectively.
+
+  Tree-based models utilize pre-existing features. By providing them with your carefully engineered features, you've already completed the hardest part of the problem. This allows the model to be much more efficient, requiring far less data and computational resources to achieve high accuracy.
+
 4. What kind of benefits do you think your model(s) could have as part of an enterprise application or service?
 
 
@@ -80,21 +93,23 @@ The following are reference points that should be taken into account in the subm
 ## Usage:
 1. clone repository with `git clone https://github.com/08Aristodemus24/signal-gender-predictor`
 2. navigate to directory with `readme.md` and `requirements.txt` file
-3. run command; `conda create -n <name of env e.g. signal-gender-predictor> python=3.11.8`. Note that 3.11.8 must be the python version otherwise packages to be installed would not be compatible with a different python version
-4. once environment is created activate it by running command `conda activate`
-5. then run `conda activate signal-gender-predictor`
-6. check if pip is installed by running `conda list -e` and checking list
-7. if it is there then move to step 8, if not then install `pip` by typing `conda install pip`
-8. if `pip` exists or install is done run `pip install -r requirements.txt` in the directory you are currently in
+3. create .env file woth following env variables and assign your own values
+- STORAGE_ACCOUNT_NAME
+- STORAGE_ACCOUNT_KEY
+- STORAGE_ACCOUNT_CONN_STR
+- STORAGE_ACCOUNT_URL
+- AZURE_CLIENT_ID
+- AZURE_CLIENT_SECRET
+- AZURE_SUBSCRIPTION_ID
+- AZURE_TENANT_ID
+- RESOURCE_GROUP_NAME
+- MOTHERDUCK_TOKEN
+4. run `make up` to spin up/run docker containers (run `make down` to shut down the docker container)
+5. go to `localhost:8080` to see dag/s
+6. run/trigger pipeline 
 
 ## To implement/fix:
-1. testing/evaluation script to use saved model weights to see overall test performance of model
-2. there seems to be something wrong as the models seem to have loss go up during training and auc go down, which signifies the model may be underfitting, or not generalizing well on the training set. This may be because there aren't enough examples for the other class for the model to learn from and learns that the audio signals are mostly male voices, which we know in the dataset outweighs by large margin the female labeled audio recordings. Solution could be to gather more female recordings, and extract more features from it. Another less viable option is to undersample the male class so that it is equal to the amount of female audio signal inputs
-3. hyper parameter tuning to determine more viable hyper parameters for each model
-4. learn and try tensorflow decision forest models and see if if will be better than a typical softmax regression model
-5. learn more about audio signal processing as I still don't know how to better extract features from audio signals without me fully understanding concepts like mel spectrograms, spectral centroids, etc.
-6. solving why f1 score seems to bee a numpy array instead of a single value: https://stackoverflow.com/questions/68596302/f1-score-metric-per-class-in-tensorflow
-7.  `: RESOURCE_EXHAUSTED: OOM when allocating tensor with shape[128,128] and type float on /job:localhost/replica:0/task:0/device:CPU:0 by allocator mklcpu 2025-03-12 16:17:33.380804: I tensorflow/core/framework/local_rendezvous.cc:405] Local rendezvous is aborting with status: RESOURCE_EXHAUSTED: OOM when allocating tensor with shape[256,128] and type float on /job:localhost/replica:0/task:0/device:CPU:0 by allocator mklcpu` this error may be due to the immense size of the input data which we know is (m, 2000, 1) and given we have 6815 subjects, which is incomparable to the previous project I did which only had 43 subjects at most, this preprocessing of the data for deep learning tasks, I might have to do with a better machine, or somehow interpolate the raw audio signals to a much lower frequency, which may unfortunately cause importatn features to be lost.
+1. deploy to kubernetes cluster as it seems an application using multiple docker containers needs a kubernetes cluster. Azure container apps, azure container registry, with azure kubernetes service could be viable and alternatively aws container registry, aws ecs, and aws eks.  
 
 ## Business Use Case:
 Problem:
