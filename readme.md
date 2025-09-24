@@ -13,16 +13,16 @@
 ![alt text](./figures%20&%20images/assets/cloud%20infrastructure.jpg)
 
 ## Technologies used:
-1. Apache Airflow
-2. DuckDB/Motherduck
-3. Librosa
-4. PyArrow
-5. Azure Data Factory
-6. Azure Data Lake Gen2
-7. Azure Function App
-8. Scikit-Learn
-9. Google Colab
-10. Terraform
+1. Apache Airflow - used to orchestrate the signal processing pipeline
+2. DuckDB/Motherduck - a low cost open source pseudo feature store to load the final computed audio signal features
+3. Librosa - library to compute audio specific signal features such as spectral features
+4. PyArrow - library for Apache Arrow, providing an in-memory, standardized columnar data format for efficient data processing, analytics, and interoperability across different systems and languages
+5. Azure Data Factory - used to orchestrate a sub pipeline in the main pipeline that directly extracted and decompressed zip files from the http resouce to the bronze ADL2 staging layer 
+6. Azure Data Lake Gen2 - a cloud data lake storage solution that was used to store data at each transformation through staging layers
+7. Azure Function App - used to extract http URLs of zip files containing the raw audio recordings of subjects 
+8. Scikit-Learn - used to address the dataset imbalance present in the dataset by augmenting minority labels through synthetic minority oversampling technique (SMOTE) 
+9. Google Colab & Yggdrasil Decision Forests - used to train a gradient boosted trees using the final computed features stored in the data warehouse 
+10. Terraform - provisioned use of cloud services like ADF, ADL2, and Azure Function App's
 
 ## Dataset
 The raw data consists of, as of 30th August 2018, 95,481 audio samples of male and female speakers speaking in short English sentences. The raw data is compressed using `.tgz` files. Each `.tgz` compressed file contains the following directory structure and files:
