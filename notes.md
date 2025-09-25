@@ -2328,8 +2328,9 @@ https://aristodemus8-signal-gender-predictor.hf.space/predict/
 
 `curl -H "Content-type: multipart/form-data" -F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0092.wav" -F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0093.wav" -F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0094.wav" -F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0095.wav" -F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0096.wav" https://aristodemus8-signal-gender-predictor.hf.space/predict/`
 
-testing for new female audio recording
-`curl -H "Content-type: multipart/form-data" -F audios=@"./include/data/test/cinammon girl vocals.wav" https://aristodemus8-signal-gender-predictor.hf.space/predict/`
+testing for new female audio recording:
+- `curl -H "Content-type: multipart/form-data" -F audios=@"./include/data/test/cinammon girl vocals trimmed.wav" https://aristodemus8-signal-gender-predictor.hf.space/predict/`
+- `curl -H "Content-type: multipart/form-data" -F audios=@"./include/data/test/brooklyn baby vocals trimmed.wav" https://aristodemus8-signal-gender-predictor.hf.space/predict/`
 
 * there may be a potential for a bug in the transformation of the pipeline, particularly in removing columns that contain infinity values, as the model was trained on data that removed these columns with infinity value, but there isn't just always a guarantee that in inference predicting new data may not always have these columns removed. Mas maganda talaga impute mo rin ang infinity columns for now just assign the threshold to 0
 
