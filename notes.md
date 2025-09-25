@@ -2303,6 +2303,32 @@ by using a wildcard like * we are telling git to push anything that is in a spec
 
 * to call our api we have to use `https://aristodemus8-signal-gender-predictor.hf.space/predict/` not `https://aristodemus8-signal-gender-predictor.hf.space/predict`
 
+* test curl command for API endpoint: `curl -H "Content-type: multipart/form-data" -F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0092.wav" https://aristodemus8-signal-gender-predictor.hf.space/predict/` and for local: `curl -H "Content-type: multipart/form-data" -F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0092.wav" http://localhost:8000/predict/`
+
+if multiple files:
+```
+curl -H "Content-type: multipart/form-data" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0092.wav" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0093.wav" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0094.wav" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0095.wav" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0096.wav" \
+http://localhost:8000/predict/
+```
+
+```
+curl -H "Content-type: multipart/form-data" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0092.wav" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0093.wav" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0094.wav" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0095.wav" \
+-F audios=@"./include/data/bronze/violet6008-20121119-fya/wav/a0096.wav" \
+https://aristodemus8-signal-gender-predictor.hf.space/predict/
+```
+
+* there may be a potential for a bug in the transformation of the pipeline, particularly in removing columns that contain infinity values, as the model was trained on data that removed these columns with infinity value, but there isn't just always a guarantee that in inference predicting new data may not always have these columns removed. Mas maganda talaga impute mo rin ang infinity columns for now just assign the threshold to 0
+
+
 # Workarounds:
 * I can't use spark because its too expensive, and spark when ran in environment just takes too much time to process the feeatures of the signals so I use duckdb, pyarrow, numpy, and librosa together
 * but duckdb can't read in azure data lake storage gen2 using airflow for some reason but can in local environment without linux so I'm debating whether to still use azure as storage and just use s3

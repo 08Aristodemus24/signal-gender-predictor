@@ -31,11 +31,11 @@ models = {
 
 # load miscellaneous
 def load_miscs():
-    # # Retrieve credentials from environment variables
-    # # this is strictly used only in development
-    # # load env variables
-    # env_dir = Path('./').resolve()
-    # load_dotenv(os.path.join(env_dir, '.env'))
+    # Retrieve credentials from environment variables
+    # this is strictly used only in development
+    # load env variables
+    env_dir = Path('./').resolve()
+    load_dotenv(os.path.join(env_dir, '.env'))
 
     # load credentials
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
@@ -532,7 +532,7 @@ async def predict(
 
     inf_cnts = conn.sql(query).fetchdf()
 
-    def identify_inf_cols_to_remove(df, threshold=5):
+    def identify_inf_cols_to_remove(df, threshold=0):
         """
         it is assumed that df is single row and multidimensional 
         or with multiple columns
