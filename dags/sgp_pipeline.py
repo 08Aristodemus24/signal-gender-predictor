@@ -43,54 +43,55 @@ with DAG(
 ) as dag:
     
 
-    # extract_signals = BashOperator(
-    #     task_id="extract_signals",
-    #     bash_command=f"python {AIRFLOW_HOME}/operators/extract_signals.py"
-    # ) 
+    extract_signals = BashOperator(
+        task_id="extract_signals",
+        bash_command=f"python {AIRFLOW_HOME}/operators/extract_signals.py"
+    ) 
 
-    # ingest_signals = PapermillOperator(
-    #     task_id="ingest_signals",
-    #     input_nb=f"{AIRFLOW_HOME}/operators/ingest_signals.ipynb",
-    #     output_nb=f"{BASE_DIR}/include/scripts/ingest_signals_out.ipynb",
-    #     # parameters={"msgs": "Ran from Airflow at {{ logical_date }}!"},
-    # )
+    ingest_signals = PapermillOperator(
+        task_id="ingest_signals",
+        input_nb=f"{AIRFLOW_HOME}/operators/ingest_signals.ipynb",
+        output_nb=f"{BASE_DIR}/include/scripts/ingest_signals_out.ipynb",
+        # parameters={"msgs": "Ran from Airflow at {{ logical_date }}!"},
+    )
 
-    # ingest_labels = PapermillOperator(
-    #     task_id="ingest_labels",
-    #     input_nb=f"{AIRFLOW_HOME}/operators/ingest_labels.ipynb",
-    #     output_nb=f"{BASE_DIR}/include/scripts/ingest_labels_out.ipynb",
-    # )
+    ingest_labels = PapermillOperator(
+        task_id="ingest_labels",
+        input_nb=f"{AIRFLOW_HOME}/operators/ingest_labels.ipynb",
+        output_nb=f"{BASE_DIR}/include/scripts/ingest_labels_out.ipynb",
+    )
 
-    # second_stage_signal_transform = PapermillOperator(
-    #     task_id="second_stage_signal_transform",
-    #     input_nb=f"{AIRFLOW_HOME}/operators/second_stage_signal_transform.ipynb",
-    #     output_nb=f"{BASE_DIR}/include/scripts/second_stage_signal_transform.ipynb",
-    # )
+    second_stage_signal_transform = PapermillOperator(
+        task_id="second_stage_signal_transform",
+        input_nb=f"{AIRFLOW_HOME}/operators/second_stage_signal_transform.ipynb",
+        output_nb=f"{BASE_DIR}/include/scripts/second_stage_signal_transform.ipynb",
+    )
 
-    # third_stage_signal_transform = PapermillOperator(
-    #     task_id="third_stage_signal_transform",
-    #     input_nb=f"{AIRFLOW_HOME}/operators/third_stage_signal_transform.ipynb",
-    #     output_nb=f"{BASE_DIR}/include/scripts/third_stage_signal_transform.ipynb",
-    # )
+    third_stage_signal_transform = PapermillOperator(
+        task_id="third_stage_signal_transform",
+        input_nb=f"{AIRFLOW_HOME}/operators/third_stage_signal_transform.ipynb",
+        output_nb=f"{BASE_DIR}/include/scripts/third_stage_signal_transform.ipynb",
+    )
 
-    # augment_signals = PapermillOperator(
-    #     task_id="augment_signals",
-    #     input_nb=f"{AIRFLOW_HOME}/operators/augment_signals.ipynb",
-    #     output_nb=f"{BASE_DIR}/include/scripts/augment_signals.ipynb",
-    # )
+    augment_signals = PapermillOperator(
+        task_id="augment_signals",
+        input_nb=f"{AIRFLOW_HOME}/operators/augment_signals.ipynb",
+        output_nb=f"{BASE_DIR}/include/scripts/augment_signals.ipynb",
+    )
 
-    # select_signal_features = BashOperator(
-    #     task_id="select_signal_features",
-    #     bash_command=f"python {AIRFLOW_HOME}/operators/select_signal_features.py"
-    # )
+    select_signal_features = BashOperator(
+        task_id="select_signal_features",
+        bash_command=f"python {AIRFLOW_HOME}/operators/select_signal_features.py"
+    )
 
     load_signal_features = BashOperator(
         task_id="load_signal_features",
         bash_command=f"python {AIRFLOW_HOME}/operators/load_signal_features.py"
     )
 
-    # extract_signals >> [ingest_signals, ingest_labels]
-    # [ingest_signals, ingest_labels] >> second_stage_signal_transform 
-    # second_stage_signal_transform >> third_stage_signal_transform 
-    # third_stage_signal_transform >> augment_signals >> select_signal_features >> 
-    load_signal_features
+    extract_signals >> [ingest_signals, ingest_labels]
+    [ingest_signals, ingest_labels] >> second_stage_signal_transform 
+    second_stage_signal_transform >> third_stage_signal_transform 
+    third_stage_signal_transform >> augment_signals 
+    augment_signals >> select_signal_features 
+    select_signal_features >> load_signal_features

@@ -114,6 +114,7 @@ Tree-based models (like Gradient Boosted Trees) are highly effective at finding 
 ## Business Use Case:
 Problem:
 * voice and audio data can be difficult to efficiently and affordably convert raw, unstructured audio files into actionable intelligence
+
 * Raw audio files are large, unwieldy, and require specialized tools to process. Extracting meaningful features from these signals is computationally intensive, and traditional methods often fail to scale, creating a massive data bottleneck that prevents machine learning projects from ever reaching production.
 * Relying solely on expensive, proprietary cloud services can be suffocating cost wise for every stage of the pipeline—from data ingestion to feature transformation. This traps organizations into a cycle of high operational expenses, making valuable analytics and machine learning applications inaccessible to all but the largest enterprises.
 * Without a standardized, automated, and repeatable process, every machine learning experiment becomes a manual, one-off project. This leads to inconsistent results, difficulty in reproducing models, and a significant amount of time and resources wasted on manual data wrangling rather than on model innovation.
@@ -125,9 +126,11 @@ Solution:
 * Centralized and Reusable Features: The final, cleaned, and augmented features are stored in a gold-layer and then pushed to a central, live analytical database using MotherDuck. This creates a single source of truth for all features, enabling both efficient model training and low-latency inference for real-time applications.
 * The entire process is automated and orchestrated by Apache Airflow, ensuring reliability, reproducibility, and transparent monitoring of every pipeline run. This transforms a complex, multi-step process into a single, repeatable, and production-ready workflow.
 
-
-
 Outcome: 
+* Potentially relevant for analyzing public interactions and large-scale data in market research and analytics
+- can provide demographic breakdowns of what gender, ethnicity, etc. is interacting with certain products, helping with store layout and inventory planning based on audio of individuals recorded from sensors
+- can provide high level of breakdown of individuals participation by gender, ethnicity, etc. in public forums/political events automatically through their audio offering quick insights than manual labelling
+In summary, the core business impact is the ability to use a foundational demographic data point (gender) to make interactions, advertisements, and service processes demonstrably more efficient and personalized.
 * Developed an end-to-end MLOps pipeline for a audio signal gender prediction model, reducing cloud operational costs by over 70% by leveraging the cloud only for compute during extraction and storage and the rest for open source tools. 
 * The pipeline automates the ingestion, transformation, and feature engineering of large-scale audio datasets, generating high-quality features for model training and serving.
 * Architected and implemented a scalable data pipeline to process gigabytes of unstructured audio data. The system generates high-impact features for a voice-based gender prediction model providing a repeatable and production-ready framework for real-time audio analytics and a foundation for new voice-based AI applications.
