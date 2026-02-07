@@ -62,23 +62,23 @@ if __name__ == "__main__":
         tenant_id=tenant_id
     )
 
-    # adf_client = DataFactoryManagementClient(credential, subscription_id)
+    adf_client = DataFactoryManagementClient(credential, subscription_id)
 
-    # # defining function app linked service
-    # sgppipeline_fa_link = LinkedServiceResource(
-    #     properties=AzureFunctionLinkedService(
-    #         function_app_url=function_app_url,
-    #         authentication="Anonymous",
-    #         function_key=SecureString(value=function_app_key),
-    #     )
-    # )
+    # defining function app linked service
+    sgppipeline_fa_link = LinkedServiceResource(
+        properties=AzureFunctionLinkedService(
+            function_app_url=function_app_url,
+            authentication="Anonymous",
+            function_key=SecureString(value=function_app_key),
+        )
+    )
 
-    # adf_client.linked_services.create_or_update(
-    #     resource_group_name=resource_group_name,
-    #     factory_name=adf_name,
-    #     linked_service_name="sgppipeline_fa_link",
-    #     linked_service=sgppipeline_fa_link
-    # )
+    adf_client.linked_services.create_or_update(
+        resource_group_name=resource_group_name,
+        factory_name=adf_name,
+        linked_service_name="sgppipeline_fa_link",
+        linked_service=sgppipeline_fa_link
+    )
 
     # # by default goes with system assigned managed identity
     # # as authentication method
@@ -95,24 +95,24 @@ if __name__ == "__main__":
     #     linked_service=sgppipeline_akv_link
     # )
 
-    # # for creating a azure data lake storage gen 2 linked service
-    # # when key is specified authentication type becomes account 
-    # # key instead of system assigned managed identity automatically
-    # sgppipeline_adl2_source_dump_link = LinkedServiceResource(
-    #     # azure blob file system (fs) is adl2's linked service
-    #     properties=AzureBlobFSLinkedService(
-    #         url=storage_account_url,
-    #         account_key=storage_account_key,
-    #         tenant=tenant_id,
-    #     )
-    # )
+    # for creating a azure data lake storage gen 2 linked service
+    # when key is specified authentication type becomes account 
+    # key instead of system assigned managed identity automatically
+    sgppipeline_adl2_source_dump_link = LinkedServiceResource(
+        # azure blob file system (fs) is adl2's linked service
+        properties=AzureBlobFSLinkedService(
+            url=storage_account_url,
+            account_key=storage_account_key,
+            tenant=tenant_id,
+        )
+    )
 
-    # adf_client.linked_services.create_or_update(
-    #     resource_group_name=resource_group_name,
-    #     factory_name=adf_name,
-    #     linked_service_name="sgppipeline_adl2_source_dump_link",
-    #     linked_service=sgppipeline_adl2_source_dump_link
-    # )
+    adf_client.linked_services.create_or_update(
+        resource_group_name=resource_group_name,
+        factory_name=adf_name,
+        linked_service_name="sgppipeline_adl2_source_dump_link",
+        linked_service=sgppipeline_adl2_source_dump_link
+    )
 
     # # creates linked service for http based applications
     # sgppipeline_http_source_link = LinkedServiceResource(
