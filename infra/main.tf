@@ -115,10 +115,10 @@ resource "azurerm_storage_container" "containers" {
 #   }
 # }
 
-# # azure data factory for orchestrating the whole workflow from extraction
-# # transformation and to loading
-# resource "azurerm_data_factory" "adf" {
-#   name                = "${var.project_name}adf"
-#   location            = azurerm_resource_group.rg.location
-#   resource_group_name = azurerm_resource_group.rg.name
-# }
+# azure data factory for orchestrating the whole workflow from extraction
+# transformation and to loading
+resource "azurerm_data_factory" "adf" {
+  name                = "${var.project_name}adf"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}

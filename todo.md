@@ -68,6 +68,8 @@ https://www.databricks.com/blog/2021/10/12/native-support-of-session-window-in-s
 
 
 # Setting up azure workspace
+* rebuild azure data factory, azure functions, azure key vault to extract the list of singals and dump to json so that airflow can run successfully
+
 * create an azure account at 
 * setup azure databricks service (data transformation)
 basics:
@@ -239,6 +241,10 @@ from here we just do our typical pyspark operations in transformation and write 
 like airflows feature of its tasks being able to use return values from previous tasks called xcoms, ADF also has this feature 
 
 # Deployment:
+
+
+
+
 * because we are dealing with a multi container/service application that uses an airflow webserver, init, triggerer, scheduler, and postgres, we need some way to deploy other than azure container instances or azure container apps as this only use a single docker file.
 * my guess is this has something to do with kubernetes which is a multi node cluster able to handle multiple docker containers/services efficiently.
 * I will also I think have to use azure kubernetes service

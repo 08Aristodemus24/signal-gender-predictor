@@ -1,7 +1,7 @@
 # start containers in detached mode so that after starting
 # it doesn't leave containers running in the terminal so that
 # subsequent commands can run such as do-sleep and setup-conn
-start-containers:
+start-containers:	
 	docker compose build && docker compose up --detach
 
 # timeout for 30 seconds to make sure container
