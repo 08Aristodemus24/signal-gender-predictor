@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     # location and data factory name
     location = "eastus"
-    adf_name = "sgppipelineadffree"
+    adf_name = "sgppipelineadf"
 
     # Specify your Active Directory client ID, client secret, and tenant ID
     credential = ClientSecretCredential(

@@ -2334,6 +2334,8 @@ testing for new female audio recording:
 
 * there may be a potential for a bug in the transformation of the pipeline, particularly in removing columns that contain infinity values, as the model was trained on data that removed these columns with infinity value, but there isn't just always a guarantee that in inference predicting new data may not always have these columns removed. Mas maganda talaga impute mo rin ang infinity columns for now just assign the threshold to 0
 
+* to download file system contents or directory in adl2 storage account `az storage fs directory download --file-system <file system name> --account-name <storage account name> --source-path <name of folder in file system> --destination-path <e.g. signal-gender-predictor/include/data/silver> --account-key <account key> --recursive`
+
 
 # Workarounds:
 * I can't use spark because its too expensive, and spark when ran in environment just takes too much time to process the feeatures of the signals so I use duckdb, pyarrow, numpy, and librosa together
