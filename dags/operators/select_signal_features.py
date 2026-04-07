@@ -21,35 +21,32 @@ from azure.storage.filedatalake import DataLakeServiceClient, FileSystemClient
 
 
 if __name__ == "__main__":
-    # # local
-    # DATA_DIR = "../include/data"
+    # local
+    DATA_DIR = "../include/data"
 
-    
-    # SILVER_FOLDER_NAME = "silver"
-    # SUB_FOLDER_NAME = "stage-04"
-    # SILVER_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}", "{SUB_FOLDER_NAME}").replace("\\", "/")
-    # SILVER_DATA_DIR
+    # local
+    GOLD_FOLDER_NAME = "gold"
+    GOLD_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
 
-    # # load credentials for cloud
+    # load credentials for cloud
 
-    # # Retrieve credentials from environment variables
-    # # this is strictly used only in development
-    # # load env variables
-    # env_dir = Path('../../').resolve()
-    # load_dotenv(os.path.join(env_dir, '.env'))
+    # Retrieve credentials from environment variables
+    # this is strictly used only in development
+    # load env variables
+    env_dir = Path('../../').resolve()
+    load_dotenv(os.path.join(env_dir, '.env'))
 
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
     credential = os.environ.get("STORAGE_ACCOUNT_KEY")
     conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")
 
-    # cloud
-    # URL = "abfss://{FOLDER_NAME}@sgppipelinesa.dfs.core.windows.net"
-    URL = "{FOLDER_NAME}"
-    SILVER_FOLDER_NAME = "sgppipelinesa-silver"
-    SUB_FOLDER_NAME = "stage-04"
-    SILVER_DATA_DIR = os.path.join(URL, "{SUB_FOLDER_NAME}").replace("\\", "/")
+    # # cloud
+    # # URL = "abfss://{FOLDER_NAME}@sgppipelinesa.dfs.core.windows.net"
+    # URL = "{FOLDER_NAME}"
+    # GOLD_FOLDER_NAME = "sgppipelinesa-gold"
+    # GOLD_DATA_DIR = os.path.join(URL).replace("\\", "/")
 
-    # # this client is for saving .pkl, .json files to ADL2
+    # this client is for saving .pkl, .json files to ADL2
 
     # cloud
     # create client with generated sas token
@@ -63,73 +60,63 @@ if __name__ == "__main__":
     misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name}-miscellaneous")
 
     # # this client is for saving pyarrow tables to ADL2 
-    handler = pa_adl.AccountHandler.from_account_name(storage_account_name, credential=credential)
-    fs = pa.fs.PyFileSystem(handler)
+    # handler = pa_adl.AccountHandler.from_account_name(storage_account_name, credential=credential)
+    # fs = pa.fs.PyFileSystem(handler)
 
-    # # read the data
+    # read the data
 
-    # cloud
-    train_data_sc_sm_table_path = os.path.join(
-        SILVER_DATA_DIR.format(
-            FOLDER_NAME=SILVER_FOLDER_NAME,
-            SUB_FOLDER_NAME=SUB_FOLDER_NAME
-        ),
-        "train_data_sc_sm.parquet"
-    ).replace("\\", "/")
-    train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path, filesystem=fs)
-
-    # # local
+    # # cloud
     # train_data_sc_sm_table_path = os.path.join(
-    #     SILVER_DATA_DIR.format(
-    #         DATA_DIR=DATA_DIR,
-    #         FOLDER_NAME=SILVER_FOLDER_NAME,
-    #         SUB_FOLDER_NAME=SUB_FOLDER_NAME
+    #     GOLD_DATA_DIR.format(
+    #         FOLDER_NAME=GOLD_FOLDER_NAME,
     #     ),
     #     "train_data_sc_sm.parquet"
     # ).replace("\\", "/")
-    # train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path)
+    # train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path, filesystem=fs)
 
-    # cloud
-    val_data_sc_sm_table_path = os.path.join(
-        SILVER_DATA_DIR.format(
-            FOLDER_NAME=SILVER_FOLDER_NAME,
-            SUB_FOLDER_NAME=SUB_FOLDER_NAME
-        ),
-        "val_data_sc_sm.parquet"
-    ).replace("\\", "/")
-    val_data_sc_sm_table = pq.read_table(val_data_sc_sm_table_path, filesystem=fs)
-
-    # # local
     # val_data_sc_sm_table_path = os.path.join(
-    #     SILVER_DATA_DIR.format(
-    #         DATA_DIR=DATA_DIR,
-    #         FOLDER_NAME=SILVER_FOLDER_NAME,
-    #         SUB_FOLDER_NAME=SUB_FOLDER_NAME
+    #     GOLD_DATA_DIR.format(
+    #         FOLDER_NAME=GOLD_FOLDER_NAME,
     #     ),
     #     "val_data_sc_sm.parquet"
     # ).replace("\\", "/")
-    # val_data_sc_sm_table = pq.read_table(val_data_sc_sm_table_path)
-
-    # cloud
-    test_data_sc_sm_table_path = os.path.join(
-        SILVER_DATA_DIR.format(
-            FOLDER_NAME=SILVER_FOLDER_NAME,
-            SUB_FOLDER_NAME=SUB_FOLDER_NAME
-        ),
-        "test_data_sc_sm.parquet"
-    ).replace("\\", "/")
-    test_data_sc_sm_table = pq.read_table(test_data_sc_sm_table_path, filesystem=fs)
-
-    # # local
+    # val_data_sc_sm_table = pq.read_table(val_data_sc_sm_table_path, filesystem=fs)
+    
     # test_data_sc_sm_table_path = os.path.join(
-    #     SILVER_DATA_DIR.format(
-    #         DATA_DIR=DATA_DIR,
-    #         FOLDER_NAME=SILVER_FOLDER_NAME,
-    #         SUB_FOLDER_NAME=SUB_FOLDER_NAME
+    #     GOLD_DATA_DIR.format(
+    #         FOLDER_NAME=GOLD_FOLDER_NAME,
     #     ),
     #     "test_data_sc_sm.parquet"
     # ).replace("\\", "/")
-    # test_data_sc_sm_table = pq.read_table(test_data_sc_sm_table_path)
+    # test_data_sc_sm_table = pq.read_table(test_data_sc_sm_table_path, filesystem=fs)
+    
+    # local
+    train_data_sc_sm_table_path = os.path.join(
+        GOLD_DATA_DIR.format(
+            DATA_DIR=DATA_DIR,
+            FOLDER_NAME=GOLD_FOLDER_NAME,
+        ),
+        "train_data_sc_sm.parquet"
+    ).replace("\\", "/")
+    train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path)
+    
+    val_data_sc_sm_table_path = os.path.join(
+        GOLD_DATA_DIR.format(
+            DATA_DIR=DATA_DIR,
+            FOLDER_NAME=GOLD_FOLDER_NAME,
+        ),
+        "val_data_sc_sm.parquet"
+    ).replace("\\", "/")
+    val_data_sc_sm_table = pq.read_table(val_data_sc_sm_table_path)
+
+    test_data_sc_sm_table_path = os.path.join(
+        GOLD_DATA_DIR.format(
+            DATA_DIR=DATA_DIR,
+            FOLDER_NAME=GOLD_FOLDER_NAME,
+        ),
+        "test_data_sc_sm.parquet"
+    ).replace("\\", "/")
+    test_data_sc_sm_table = pq.read_table(test_data_sc_sm_table_path)
 
     feat_cols = list(filter(lambda feat_col: not "label" in feat_col, train_data_sc_sm_table.column_names))
 
@@ -181,20 +168,20 @@ if __name__ == "__main__":
     MISCELLANEOUS_FOLDER_NAME = "miscellaneous"
     MISCELLANEOUS_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
 
-    # # local
-    # with open(
-    #     file=os.path.join(
-    #         MISCELLANEOUS_DATA_DIR.format(
-    #             DATA_DIR=DATA_DIR,
-    #             FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME,
-    #         ),
-    #         "selected_feats.json"
-    #     ).replace("\\", "/"), 
-    #     mode="w+"
-    # ) as f:
-    #     f.write(selected_feats_json)
+    # local
+    with open(
+        file=os.path.join(
+            MISCELLANEOUS_DATA_DIR.format(
+                DATA_DIR=DATA_DIR,
+                FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME,
+            ),
+            "selected_feats.json"
+        ).replace("\\", "/"), 
+        mode="w+"
+    ) as f:
+        f.write(selected_feats_json)
 
-    # # read the dumped .json containing the selected features in ADL2 miscellaneous layer
+    # # # read the dumped .json containing the selected features in ADL2 miscellaneous layer
 
     # cloud
     json_file_client = misc_container_client.get_file_client("selected_feats.json")  
