@@ -19,121 +19,27 @@ from sklearn.feature_selection import RFE
 from azure.identity import DefaultAzureCredential, ClientSecretCredential
 from azure.storage.filedatalake import DataLakeServiceClient, FileSystemClient
 
-
-if __name__ == "__main__":
-    # local
-    DATA_DIR = "../include/data"
-
-    # local
-    GOLD_FOLDER_NAME = "gold"
-    GOLD_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
-
-    # load credentials for cloud
-
-    # Retrieve credentials from environment variables
-    # this is strictly used only in development
-    # load env variables
-    env_dir = Path('../../').resolve()
-    load_dotenv(os.path.join(env_dir, '.env'))
-
-    storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
-    credential = os.environ.get("STORAGE_ACCOUNT_KEY")
-    conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")
-
-    # # cloud
-    # # URL = "abfss://{FOLDER_NAME}@sgppipelinesa.dfs.core.windows.net"
-    # URL = "{FOLDER_NAME}"
-    # GOLD_FOLDER_NAME = "sgppipelinesa-gold"
-    # GOLD_DATA_DIR = os.path.join(URL).replace("\\", "/")
-
-    # this client is for saving .pkl, .json files to ADL2
-
-    # cloud
-    # create client with generated sas token
-    datalake_service_client = DataLakeServiceClient(
-        account_url=f"https://{storage_account_name}.dfs.core.windows.net", 
-        credential=credential
-    )
-
-    # retrieves file system client/container client 
-    # to retrieve datalake client
-    misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name}-miscellaneous")
-
-    # # this client is for saving pyarrow tables to ADL2 
-    # handler = pa_adl.AccountHandler.from_account_name(storage_account_name, credential=credential)
-    # fs = pa.fs.PyFileSystem(handler)
-
-    # read the data
-
-    # # cloud
-    # train_data_sc_sm_table_path = os.path.join(
-    #     GOLD_DATA_DIR.format(
-    #         FOLDER_NAME=GOLD_FOLDER_NAME,
-    #     ),
-    #     "train_data_sc_sm.parquet"
-    # ).replace("\\", "/")
-    # train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path, filesystem=fs)
-
-    # val_data_sc_sm_table_path = os.path.join(
-    #     GOLD_DATA_DIR.format(
-    #         FOLDER_NAME=GOLD_FOLDER_NAME,
-    #     ),
-    #     "val_data_sc_sm.parquet"
-    # ).replace("\\", "/")
-    # val_data_sc_sm_table = pq.read_table(val_data_sc_sm_table_path, filesystem=fs)
+def select_signal_features(X, y, is_local: bool, n_features: int=60, misc_container_client=None):
+    """
+    selects n signal features and writes them either 
+    locally or to miscellaneous container in azure data lake 
+    storage gen 2
+    """
     
-    # test_data_sc_sm_table_path = os.path.join(
-    #     GOLD_DATA_DIR.format(
-    #         FOLDER_NAME=GOLD_FOLDER_NAME,
-    #     ),
-    #     "test_data_sc_sm.parquet"
-    # ).replace("\\", "/")
-    # test_data_sc_sm_table = pq.read_table(test_data_sc_sm_table_path, filesystem=fs)
+    # condition whether to run feature selection algorithm
+    # because if the path exists then no need to run feature
+    # selection algorithm
+    path_exists = Path(os.path.join(
+        MISCELLANEOUS_DATA_DIR.format(
+            DATA_DIR=DATA_DIR,
+            FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME,
+        ),
+        "selected_feats.json"
+    ).replace("\\", "/")).exists() if is_local == True \
+    else misc_container_client.get_file_client("selected_feats.json").exists()
     
-    # local
-    train_data_sc_sm_table_path = os.path.join(
-        GOLD_DATA_DIR.format(
-            DATA_DIR=DATA_DIR,
-            FOLDER_NAME=GOLD_FOLDER_NAME,
-        ),
-        "train_data_sc_sm.parquet"
-    ).replace("\\", "/")
-    train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path)
-    
-    val_data_sc_sm_table_path = os.path.join(
-        GOLD_DATA_DIR.format(
-            DATA_DIR=DATA_DIR,
-            FOLDER_NAME=GOLD_FOLDER_NAME,
-        ),
-        "val_data_sc_sm.parquet"
-    ).replace("\\", "/")
-    val_data_sc_sm_table = pq.read_table(val_data_sc_sm_table_path)
-
-    test_data_sc_sm_table_path = os.path.join(
-        GOLD_DATA_DIR.format(
-            DATA_DIR=DATA_DIR,
-            FOLDER_NAME=GOLD_FOLDER_NAME,
-        ),
-        "test_data_sc_sm.parquet"
-    ).replace("\\", "/")
-    test_data_sc_sm_table = pq.read_table(test_data_sc_sm_table_path)
-
-    feat_cols = list(filter(lambda feat_col: not "label" in feat_col, train_data_sc_sm_table.column_names))
-
-    # convert the tables features and labels into numpy arrays
-    # for feature selection
-    train_output_sm = train_data_sc_sm_table.select(["label"]).to_pandas().to_numpy().ravel()
-    train_input_sc_sm = train_data_sc_sm_table.select(feat_cols).to_pandas().to_numpy()
-    val_output_sm = val_data_sc_sm_table.select(["label"]).to_pandas().to_numpy().ravel()
-    val_input_sc_sm = val_data_sc_sm_table.select(feat_cols).to_pandas().to_numpy()
-    test_output_sm = test_data_sc_sm_table.select(["label"]).to_pandas().to_numpy().ravel()
-    test_input_sc_sm = test_data_sc_sm_table.select(feat_cols).to_pandas().to_numpy()
-
-    # if the selected features do not yet exist we will have to
-    # run block under this if statemetn
-    if not misc_container_client.get_file_client("selected_feats.json").exists():
-        n_features = 60
-
+    # if not 
+    if not path_exists:
         # select best features first by means of backward
         # feature selection based on support vector classifiers
         model = RandomForestClassifier(verbose=0)
@@ -146,7 +52,7 @@ if __name__ == "__main__":
         )
 
         # train feature selector on data
-        selector.fit(train_input_sc_sm, train_output_sm)
+        selector.fit(X, y)
 
         # obtain feature mask boolean values, and use it as index
         # to select only the columns that have been selected by BFS
@@ -158,122 +64,134 @@ if __name__ == "__main__":
         selected_feats_json = json.dumps(selected_feats)
         selected_feats_json_body = selected_feats_json.encode('utf8')
 
-        # # dump the selected features to .json in azure data lake
+        # dump the selected features to .json in azure data lake
+        if not is_local:
+            # cloud
+            json_file_client = misc_container_client.get_file_client("selected_feats.json")  
+            json_file_client.upload_data(selected_feats_json_body, overwrite=True)
+        else:
+            # local
+            with open(
+                file=os.path.join(
+                    MISCELLANEOUS_DATA_DIR.format(
+                        DATA_DIR=DATA_DIR,
+                        FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME,
+                    ),
+                    "selected_feats.json"
+                ).replace("\\", "/"), 
+                mode="w+"
+            ) as f:
+                f.write(selected_feats_json)
 
-        # cloud
-        json_file_client = misc_container_client.get_file_client("selected_feats.json")  
-        json_file_client.upload_data(selected_feats_json_body, overwrite=True)
+if __name__ == "__main__":
+    # local
+    DATA_DIR = "../../include/data"
 
     # local
+    GOLD_FOLDER_NAME = "gold"
+    GOLD_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
     MISCELLANEOUS_FOLDER_NAME = "miscellaneous"
     MISCELLANEOUS_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
+
+    # # load credentials for cloud
+
+    # # Retrieve credentials from environment variables
+    # # this is strictly used only in development
+    # # load env variables
+    # env_dir = Path('../../').resolve()
+    # load_dotenv(os.path.join(env_dir, '.env'))
+
+    # storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+    # credential = os.environ.get("STORAGE_ACCOUNT_KEY")
+    # conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")
+
+    # # cloud
+    # # URL = "abfss://{FOLDER_NAME}@sgppipelinesa.dfs.core.windows.net"
+    # URL = "{FOLDER_NAME}"
+    # GOLD_FOLDER_NAME = "sgppipelinesa-gold"
+    # GOLD_DATA_DIR = os.path.join(URL).replace("\\", "/")
+
+    # this client is for saving .pkl, .json files to ADL2
+
+    # # cloud
+    # # create client with generated sas token
+    # datalake_service_client = DataLakeServiceClient(
+    #     account_url=f"https://{storage_account_name}.dfs.core.windows.net", 
+    #     credential=credential
+    # )
+
+    # # retrieves file system client/container client 
+    # # to retrieve datalake client
+    # misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name}-miscellaneous")
+
+    # # this client is for saving pyarrow tables to ADL2 
+    # handler = pa_adl.AccountHandler.from_account_name(storage_account_name, credential=credential)
+    # fs = pa.fs.PyFileSystem(handler)
+
+    # read the data
+
+    # # cloud
+    # only load the training data as it is the only split
+    # necessary to run the feawture selection algorithm on
+    # we do not include the validation and testing sets as 
+    # these strictly need to be held out
+    # train_data_sc_sm_table_path = os.path.join(
+    #     GOLD_DATA_DIR.format(
+    #         FOLDER_NAME=GOLD_FOLDER_NAME,
+    #     ),
+    #     "train_data_sc_sm.parquet"
+    # ).replace("\\", "/")
+    # train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path, filesystem=fs)
+    
+    # local
+    train_data_sc_sm_table_path = os.path.join(
+        GOLD_DATA_DIR.format(
+            DATA_DIR=DATA_DIR,
+            FOLDER_NAME=GOLD_FOLDER_NAME,
+        ),
+        "train_data_sc_sm.parquet"
+    ).replace("\\", "/")
+    train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path)
+
+    feat_cols = list(filter(lambda feat_col: not "label" in feat_col, train_data_sc_sm_table.column_names))
+
+    # convert the tables features and labels into numpy arrays
+    # for feature selection
+    train_output_sm = train_data_sc_sm_table.select(["label"]).to_pandas().to_numpy().ravel()
+    train_input_sc_sm = train_data_sc_sm_table.select(feat_cols).to_pandas().to_numpy()
+
+    # if the selected features do not yet exist we will have to
+    # run block under this if statement
+    select_signal_features(
+        train_input_sc_sm, 
+        train_output_sm, 
+        is_local=True, 
+        misc_container_client=None
+    )
+
+    # read the dumped .json containing the selected features in ADL2 miscellaneous layer
+
+    # # cloud
+    # json_file_client = misc_container_client.get_file_client("selected_feats.json")  
+    # download = json_file_client.download_file()
+    # downloaded_bytes = download.readall()
+    # selected_feats = json.loads(downloaded_bytes.decode('utf-8'))
 
     # local
     with open(
         file=os.path.join(
             MISCELLANEOUS_DATA_DIR.format(
-                DATA_DIR=DATA_DIR,
-                FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME,
+                DATA_DIR=DATA_DIR, 
+                FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME
             ),
             "selected_feats.json"
         ).replace("\\", "/"), 
-        mode="w+"
+        mode="r"
     ) as f:
-        f.write(selected_feats_json)
+        selected_feats = json.load(f)
 
-    # # # read the dumped .json containing the selected features in ADL2 miscellaneous layer
-
-    # cloud
-    json_file_client = misc_container_client.get_file_client("selected_feats.json")  
-    download = json_file_client.download_file()
-    downloaded_bytes = download.readall()
-    selected_feats = json.loads(downloaded_bytes.decode('utf-8'))
-
-    # # local
-    # with open(
-    #     file=os.path.join(
-    #         MISCELLANEOUS_DATA_DIR.format(
-    #             DATA_DIR=DATA_DIR, 
-    #             FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME
-    #         ),
-    #         "selected_feats.json"
-    #     ).replace("\\", "/"), 
-    #     mode="r"
-    # ) as f:
-    #     selected_feats = json.load(f)
-
-    # # we use the selected features here to reduce the tables of each data split
-
-    cols = selected_feats + ["label"]
-    train_data_sc_sm_red_table = train_data_sc_sm_table.select(cols)
-    val_data_sc_sm_red_table = val_data_sc_sm_table.select(cols)
-    test_data_sc_sm_red_table = test_data_sc_sm_table.select(cols)
-
-    # # save the final scaled, augmented, and reduced features to the gold layer
-
-    # # local
-    # GOLD_FOLDER_NAME = "gold"
-    # GOLD_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
-    # SAVE_DIR = GOLD_DATA_DIR.format(
-    #     DATA_DIR=DATA_DIR,
-    #     FOLDER_NAME=GOLD_FOLDER_NAME,
-    # )
-    # SAVE_DIR
-
-    # # local
-    # train_data_sc_sm_red_table_path = os.path.join(
-    #     SAVE_DIR,
-    #     "train_data_sc_sm_red.parquet"
-    # ).replace("\\", "/")
-    # train_data_sc_sm_red_table_path
-
-    # # local
-    # val_data_sc_sm_red_table_path = os.path.join(
-    #     SAVE_DIR,
-    #     "val_data_sc_sm_red.parquet"
-    # ).replace("\\", "/")
-    # val_data_sc_sm_red_table_path
-
-    # # local
-    # test_data_sc_sm_red_table_path = os.path.join(
-    #     SAVE_DIR,
-    #     "test_data_sc_sm_red.parquet"
-    # ).replace("\\", "/")
-    # test_data_sc_sm_red_table_path
-
-    # # local
-    # pq.write_table(train_data_sc_sm_red_table, train_data_sc_sm_red_table_path)
-    # pq.write_table(val_data_sc_sm_red_table, val_data_sc_sm_red_table_path)
-    # pq.write_table(test_data_sc_sm_red_table, test_data_sc_sm_red_table_path)
-
-    # cloud
-    GOLD_FOLDER_NAME = "sgppipelinesa-gold"
-    GOLD_DATA_DIR = os.path.join("{FOLDER_NAME}").replace("\\", "/")
-    SAVE_DIR = GOLD_DATA_DIR.format(
-        FOLDER_NAME=GOLD_FOLDER_NAME,
-    )
-
-    # cloud
-    train_data_sc_sm_red_table_path = os.path.join(
-        SAVE_DIR,
-        "train_data_sc_sm_red.parquet"
-    ).replace("\\", "/")
-
-    # cloud
-    val_data_sc_sm_red_table_path = os.path.join(
-        SAVE_DIR,
-        "val_data_sc_sm_red.parquet"
-    ).replace("\\", "/")
-
-    # cloud
-    test_data_sc_sm_red_table_path = os.path.join(
-        SAVE_DIR,
-        "test_data_sc_sm_red.parquet"
-    ).replace("\\", "/")
-
-    # cloud
-    pq.write_table(train_data_sc_sm_red_table, train_data_sc_sm_red_table_path, filesystem=fs)
-    pq.write_table(val_data_sc_sm_red_table, val_data_sc_sm_red_table_path, filesystem=fs)
-    pq.write_table(test_data_sc_sm_red_table, test_data_sc_sm_red_table_path, filesystem=fs)
-
-
+    # we do not use the selected features here to reduce the tables of each data
+    # further as there is no need for extra use of storage when we can just load
+    # the features from azure data lake gen 2 as a list in a azure ml or google
+    # collab notebook using duckdb and select from the training, validation,
+    # or testing data in gold layer the features we need using this list

@@ -30,7 +30,23 @@ def load_externals(conn, conn_str: str):
     # like airflow container
     conn.sql("SET azure_transport_option_type = 'curl'")
 
-def load_signal_features(conn, table_name: str, GOLD_DATA_DIR: str, GOLD_FOLDER_NAME: str, FILE_NAME: str):
+def load_feature_list(conn: duckdb.DuckDBPyConnection, MISCELLANEOUS_DATA_DIR: str, MISCELLANEOUS_FOLDER_NAME: str, FILE_NAME: str):
+    # create json path existing in adl2
+    selected_feats_path = os.path.join(
+        MISCELLANEOUS_DATA_DIR.format(
+            FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME,
+        ),
+        FILE_NAME
+    ).replace("\\", "/")
+    print(f"reading selected features path {selected_feats_path}...")
+    
+    selected_feats = [feature[-1] for feature in conn.sql(f"""
+        SELECT * FROM read_json('{selected_feats_path}');
+    """).fetchall()]
+    
+    return selected_feats
+
+def load_signal_features(conn: duckdb.DuckDBPyConnection, selected_feats: list, table_name: str, GOLD_DATA_DIR: str, GOLD_FOLDER_NAME: str, FILE_NAME: str):
     # create table path existing in adl2
     table_path = os.path.join(
         GOLD_DATA_DIR.format(
@@ -38,12 +54,12 @@ def load_signal_features(conn, table_name: str, GOLD_DATA_DIR: str, GOLD_FOLDER_
         ),
         FILE_NAME
     ).replace("\\", "/")
+    print(f"reading table {table_path}...")
 
     # pass the path of this table so that it can be read
-    conn.sql(f"""
-        CREATE OR REPLACE TABLE {table_name} AS 
-            SELECT * FROM read_parquet('{table_path}')
-    """)
+    print(conn.sql(f"""
+            SELECT {", ".join(selected_feats)}, label FROM read_parquet('{table_path}')
+    """))
 
 if __name__ == "__main__":
     # Load azure credentials in order for duck db to read parquet files in adl2 gold layer 
@@ -62,7 +78,7 @@ if __name__ == "__main__":
     # cloud provider 
     URL = f"abfss://{{FOLDER_NAME}}@{storage_account_name}.dfs.core.windows.net"
     GOLD_FOLDER_NAME = f"{storage_account_name}-gold"
-    GOLD_DATA_DIR = os.path.join(URL, "").replace("\\", "/")
+    MISCELLANEOUS_FOLDER_NAME = f"{storage_account_name}-miscellaneous"
 
     # duckdb:///md:signal_gender_predictor_db
     print("connecting to duckdb...")
@@ -75,11 +91,15 @@ if __name__ == "__main__":
 
     # load externals
     load_externals(conn, conn_str)
+    
+    # get extracted feature list
+    selected_feats = load_feature_list(conn, URL, MISCELLANEOUS_FOLDER_NAME, "selected_feats.json")
+    print(selected_feats)
 
     # load features
-    load_signal_features(conn, "train_data_sc_sm_red", GOLD_DATA_DIR, GOLD_FOLDER_NAME, "train_data_sc_sm_red.parquet")
-    load_signal_features(conn, "val_data_sc_sm_red", GOLD_DATA_DIR, GOLD_FOLDER_NAME, "val_data_sc_sm_red.parquet")
-    load_signal_features(conn, "test_data_sc_sm_red", GOLD_DATA_DIR, GOLD_FOLDER_NAME, "test_data_sc_sm_red.parquet")
+    load_signal_features(conn, selected_feats, "train_data_sc_sm", URL, GOLD_FOLDER_NAME, "train_data_sc_sm.parquet")
+    load_signal_features(conn, selected_feats, "val_data_sc_sm", URL, GOLD_FOLDER_NAME, "val_data_sc_sm.parquet")
+    load_signal_features(conn, selected_feats, "test_data_sc_sm", URL, GOLD_FOLDER_NAME, "test_data_sc_sm.parquet")
 
     # print(conn.sql("""SELECT CURRENT_DATABASE()"""))
 
