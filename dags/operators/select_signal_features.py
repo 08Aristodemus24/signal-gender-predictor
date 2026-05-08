@@ -1,5 +1,4 @@
-# # Finally run feature selection on the newly synthesized data points and return only the columns which have the most importance
-
+# Finally run feature selection on the newly synthesized data points and return only the columns which have the most importance
 import os
 import io
 import random
@@ -9,6 +8,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyarrowfs_adlgen2 as pa_adl
 import json
+import logging
 
 from dotenv import load_dotenv
 from pathlib import Path
@@ -19,7 +19,24 @@ from sklearn.feature_selection import RFE
 from azure.identity import DefaultAzureCredential, ClientSecretCredential
 from azure.storage.filedatalake import DataLakeServiceClient, FileSystemClient
 
-def select_signal_features(X, y, is_local: bool, n_features: int=60, misc_container_client=None):
+def setup_logging():
+    logger = logging.getLogger('signal_gender_predictor')
+    logger.setLevel(logging.DEBUG) # Catch everything at the logger level
+
+    # 2. Console/Stream Handler (for user feedback)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO) # Only show INFO, ERROR, CRITICAL
+    console_formatter = logging.Formatter('%(levelname)s: %(message)s')
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+
+    return logger
+
+logger = setup_logging()
+logger.info("Script started.") # Will appear on console and file
+logger.debug("Attempting to extract forum data.") # Will only appear in the file'
+
+def select_signal_features(X, y, is_local: bool, n_features: int=60, reselect: bool=False, misc_container_client=None, DATA_DIR=None, MISCELLANEOUS_DATA_DIR=None, MISCELLANEOUS_FOLDER_NAME=None):
     """
     selects n signal features and writes them either 
     locally or to miscellaneous container in azure data lake 
@@ -39,9 +56,11 @@ def select_signal_features(X, y, is_local: bool, n_features: int=60, misc_contai
     else misc_container_client.get_file_client("selected_feats.json").exists()
     
     # if not 
-    if not path_exists:
+    if not path_exists or reselect:
         # select best features first by means of backward
         # feature selection based on support vector classifiers
+        logger.info("commencing feature selection...")
+        logger.info("selecting features...")
         model = RandomForestClassifier(verbose=0)
         selector = RFE(
             estimator=model, 
@@ -69,6 +88,7 @@ def select_signal_features(X, y, is_local: bool, n_features: int=60, misc_contai
             # cloud
             json_file_client = misc_container_client.get_file_client("selected_feats.json")  
             json_file_client.upload_data(selected_feats_json_body, overwrite=True)
+            logger.info("selected features written to ADL2.")
         else:
             # local
             with open(
@@ -84,74 +104,74 @@ def select_signal_features(X, y, is_local: bool, n_features: int=60, misc_contai
                 f.write(selected_feats_json)
 
 if __name__ == "__main__":
-    # local
-    DATA_DIR = "../../include/data"
+    # # local
+    # DATA_DIR = "../../include/data"
 
-    # local
-    GOLD_FOLDER_NAME = "gold"
-    GOLD_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
-    MISCELLANEOUS_FOLDER_NAME = "miscellaneous"
-    MISCELLANEOUS_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
+    # # local
+    # GOLD_FOLDER_NAME = "gold"
+    # GOLD_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
+    # MISCELLANEOUS_FOLDER_NAME = "miscellaneous"
+    # MISCELLANEOUS_DATA_DIR = os.path.join("{DATA_DIR}", "{FOLDER_NAME}").replace("\\", "/")
 
-    # # load credentials for cloud
+    # load credentials for cloud
 
-    # # Retrieve credentials from environment variables
-    # # this is strictly used only in development
-    # # load env variables
-    # env_dir = Path('../../').resolve()
-    # load_dotenv(os.path.join(env_dir, '.env'))
+    # Retrieve credentials from environment variables
+    # this is strictly used only in development
+    # load env variables
+    env_dir = Path('../../').resolve()
+    load_dotenv(os.path.join(env_dir, '.env'))
 
-    # storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
-    # credential = os.environ.get("STORAGE_ACCOUNT_KEY")
-    # conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")
+    storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+    credential = os.environ.get("STORAGE_ACCOUNT_KEY")
+    conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")
 
-    # # cloud
-    # # URL = "abfss://{FOLDER_NAME}@sgppipelinesa.dfs.core.windows.net"
-    # URL = "{FOLDER_NAME}"
-    # GOLD_FOLDER_NAME = "sgppipelinesa-gold"
-    # GOLD_DATA_DIR = os.path.join(URL).replace("\\", "/")
+    # cloud
+    # URL = "abfss://{FOLDER_NAME}@sgppipelinesa.dfs.core.windows.net"
+    URL = "{FOLDER_NAME}"
+    GOLD_FOLDER_NAME = "sgppipelinesa-gold"
+    GOLD_DATA_DIR = os.path.join(URL).replace("\\", "/")
 
     # this client is for saving .pkl, .json files to ADL2
 
-    # # cloud
-    # # create client with generated sas token
-    # datalake_service_client = DataLakeServiceClient(
-    #     account_url=f"https://{storage_account_name}.dfs.core.windows.net", 
-    #     credential=credential
-    # )
+    # cloud
+    # create client with generated sas token
+    datalake_service_client = DataLakeServiceClient(
+        account_url=f"https://{storage_account_name}.dfs.core.windows.net", 
+        credential=credential
+    )
 
-    # # retrieves file system client/container client 
-    # # to retrieve datalake client
-    # misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name}-miscellaneous")
+    # retrieves file system client/container client 
+    # to retrieve datalake client
+    misc_container_client = datalake_service_client.get_file_system_client(f"{storage_account_name}-miscellaneous")
 
-    # # this client is for saving pyarrow tables to ADL2 
-    # handler = pa_adl.AccountHandler.from_account_name(storage_account_name, credential=credential)
-    # fs = pa.fs.PyFileSystem(handler)
+    # this client is for saving pyarrow tables to ADL2 
+    handler = pa_adl.AccountHandler.from_account_name(storage_account_name, credential=credential)
+    fs = pa.fs.PyFileSystem(handler)
 
     # read the data
 
-    # # cloud
+    # cloud
     # only load the training data as it is the only split
     # necessary to run the feawture selection algorithm on
     # we do not include the validation and testing sets as 
     # these strictly need to be held out
-    # train_data_sc_sm_table_path = os.path.join(
-    #     GOLD_DATA_DIR.format(
-    #         FOLDER_NAME=GOLD_FOLDER_NAME,
-    #     ),
-    #     "train_data_sc_sm.parquet"
-    # ).replace("\\", "/")
-    # train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path, filesystem=fs)
-    
-    # local
     train_data_sc_sm_table_path = os.path.join(
         GOLD_DATA_DIR.format(
-            DATA_DIR=DATA_DIR,
             FOLDER_NAME=GOLD_FOLDER_NAME,
         ),
         "train_data_sc_sm.parquet"
     ).replace("\\", "/")
-    train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path)
+    train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path, filesystem=fs)
+    
+    # # local
+    # train_data_sc_sm_table_path = os.path.join(
+    #     GOLD_DATA_DIR.format(
+    #         DATA_DIR=DATA_DIR,
+    #         FOLDER_NAME=GOLD_FOLDER_NAME,
+    #     ),
+    #     "train_data_sc_sm.parquet"
+    # ).replace("\\", "/")
+    # train_data_sc_sm_table = pq.read_table(train_data_sc_sm_table_path)
 
     feat_cols = list(filter(lambda feat_col: not "label" in feat_col, train_data_sc_sm_table.column_names))
 
@@ -165,30 +185,32 @@ if __name__ == "__main__":
     select_signal_features(
         train_input_sc_sm, 
         train_output_sm, 
-        is_local=True, 
-        misc_container_client=None
+        is_local=False, 
+        misc_container_client=misc_container_client,
+        reselect=True
     )
 
     # read the dumped .json containing the selected features in ADL2 miscellaneous layer
 
-    # # cloud
-    # json_file_client = misc_container_client.get_file_client("selected_feats.json")  
-    # download = json_file_client.download_file()
-    # downloaded_bytes = download.readall()
-    # selected_feats = json.loads(downloaded_bytes.decode('utf-8'))
+    # cloud
+    json_file_client = misc_container_client.get_file_client("selected_feats.json")  
+    download = json_file_client.download_file()
+    downloaded_bytes = download.readall()
+    selected_feats = json.loads(downloaded_bytes.decode('utf-8'))
+    logger.info(f"selected features: {selected_feats}")
 
-    # local
-    with open(
-        file=os.path.join(
-            MISCELLANEOUS_DATA_DIR.format(
-                DATA_DIR=DATA_DIR, 
-                FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME
-            ),
-            "selected_feats.json"
-        ).replace("\\", "/"), 
-        mode="r"
-    ) as f:
-        selected_feats = json.load(f)
+    # # local
+    # with open(
+    #     file=os.path.join(
+    #         MISCELLANEOUS_DATA_DIR.format(
+    #             DATA_DIR=DATA_DIR, 
+    #             FOLDER_NAME=MISCELLANEOUS_FOLDER_NAME
+    #         ),
+    #         "selected_feats.json"
+    #     ).replace("\\", "/"), 
+    #     mode="r"
+    # ) as f:
+    #     selected_feats = json.load(f)
 
     # we do not use the selected features here to reduce the tables of each data
     # further as there is no need for extra use of storage when we can just load
