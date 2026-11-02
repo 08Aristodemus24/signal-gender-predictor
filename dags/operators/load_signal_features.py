@@ -8,7 +8,7 @@ import os
 # from duckdb.typing import DuckDBPyConnection
 from dotenv import load_dotenv
 from pathlib import Path
-
+from argparse import ArgumentParser
 
 def create_and_connect_to_db(conn, db_name: str="signal_gender_predictor_db"):
     # create a database if there's not one that already exists
@@ -63,22 +63,37 @@ def load_signal_features(conn: duckdb.DuckDBPyConnection, selected_feats: list, 
 
 if __name__ == "__main__":
     # Load azure credentials in order for duck db to read parquet files in adl2 gold layer 
+    # get arguments from user
+    parser = ArgumentParser()
+    parser.add_argument("--is-local", action="store_true", help="if script should read and write the scaler and the features locally ")
+    args = parser.parse_args()
+
+    # extract arguments to variable
+    IS_LOCAL = args.is_local 
 
     # use this only in development
     print("loading env variables...")
     env_dir = Path('../../').resolve()
     load_dotenv(os.path.join(env_dir, '.env'))
     print("env variables loaded.\n")
+
     storage_account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
     credential = os.environ.get("STORAGE_ACCOUNT_KEY")
     conn_str = os.environ.get("STORAGE_ACCOUNT_CONN_STR")
     motherduck_token = os.environ.get("MOTHERDUCK_TOKEN")
 
-    # use this path if the files are stored in a 
-    # cloud provider 
-    URL = f"abfss://{{FOLDER_NAME}}@{storage_account_name}.dfs.core.windows.net"
-    GOLD_FOLDER_NAME = f"{storage_account_name}-gold"
-    MISCELLANEOUS_FOLDER_NAME = f"{storage_account_name}-miscellaneous"
+    if IS_LOCAL:
+        # local reading of miscellaneous and training data
+        URL = "../../include/data/{FOLDER_NAME}"
+        GOLD_FOLDER_NAME = "gold"
+        MISCELLANEOUS_FOLDER_NAME = "miscellaneous"
+    else:
+        # use this path if the files are stored in a 
+        # cloud provider 
+        URL = f"abfss://{{FOLDER_NAME}}@{storage_account_name}.dfs.core.windows.net"
+        GOLD_FOLDER_NAME = f"{storage_account_name}-gold"
+        MISCELLANEOUS_FOLDER_NAME = f"{storage_account_name}-miscellaneous"
+    
 
     # duckdb:///md:signal_gender_predictor_db
     print("connecting to duckdb...")
