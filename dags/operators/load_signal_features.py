@@ -57,9 +57,10 @@ def load_signal_features(conn: duckdb.DuckDBPyConnection, selected_feats: list, 
     print(f"reading table {table_path}...")
 
     # pass the path of this table so that it can be read
-    print(conn.sql(f"""
+    conn.sql(f"""
+        CREATE OR REPLACE TABLE {table_name} AS 
             SELECT {", ".join(selected_feats)}, label FROM read_parquet('{table_path}')
-    """))
+    """)
 
 if __name__ == "__main__":
     # Load azure credentials in order for duck db to read parquet files in adl2 gold layer 
