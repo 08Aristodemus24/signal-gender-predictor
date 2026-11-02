@@ -1,17 +1,36 @@
 import requests
-import zipfile
-import tarfile
 import os
-import librosa
-import numpy as np
-import pandas as pd
-import re
 import pickle
 import json
 import io
 
 from concurrent.futures import ThreadPoolExecutor
 
+def download_dataset(urls: list | set, data_dir="data"):
+    """
+    downloads the HTTP resources locally using
+    the extracted links of these resources
+    """
+
+    # if directory already exists do nothing
+    os.makedirs(data_dir, exist_ok=True)
+
+    def helper(url):
+        # extract the file name from url path
+        file_name = url.split('/')[-1]
+
+        print(file_name)
+        # extract data stream from http resource 
+        response = requests.get(url, stream=True)
+
+        # download the file given the urls
+        with open(f"{data_dir}/{file_name}", mode="wb") as file:
+            for chunk in response.iter_content(chunk_size=10 * 1024):
+                file.write(chunk)
+
+    # concurrently download the files given url
+    with ThreadPoolExecutor(max_workers=5) as exe:
+        exe.map(helper, urls)
 
 def load_lookup_array(path: str):
     """

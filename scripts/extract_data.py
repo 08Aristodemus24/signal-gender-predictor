@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("-d", type=str, help="represents the directory ocntaining the zip files")
+    parser.add_argument("-d", type=str, help="represents the directory containing the zip files")
     args = parser.parse_args()
     
     # data directoyr entered by user

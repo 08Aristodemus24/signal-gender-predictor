@@ -38,7 +38,7 @@ def extract_links(anchor_tags: list):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("-d", type=str, help="represents the directory ocntaining the zip files")
+    parser.add_argument("-d", type=str, help="represents the directory containing the zip files")
     args = parser.parse_args()
     DATA_DIR = args.d
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     
     # arguments
     chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-dev-shm-usage") 
 
     # service
@@ -63,6 +63,7 @@ if __name__ == "__main__":
 
     # find a tags
     anchor_tags = driver.find_elements(By.TAG_NAME, "a")
+    print(anchor_tags)
     
     # extract hrefs from tags
     links = extract_links(anchor_tags)
